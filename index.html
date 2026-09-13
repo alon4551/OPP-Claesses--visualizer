@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סטודיו ומאייר תכנות מונחה עצמים והורשה ב-C# | אלון שרייבמן</title>
+    <link rel="stylesheet" href="css/style.css?v=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+</head>
+<body>
+
+    <!-- סרגל עליון - Header -->
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand-title">
+                <div class="brand-icon">🏛️</div>
+                <div>
+                    <h1>סטודיו תכנות מונחה עצמים והורשה ב-C# (OOP & Inheritance Studio)</h1>
+                    <p>מרכז מדעי המחשב — אלון שרייבמן | תיכון מקיף דוד טוביהו (י"ב - יחידה 4)</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <span class="badge-header">מודל "בובות רוסיות" [C [B [A]]]</span>
+                <span class="badge-header">Dynamic Dispatch &amp; Polymorphism</span>
+                <a href="../../2_queue/visualizer/index.html" class="btn btn-secondary" style="text-decoration: none; font-size: 0.75rem;" title="מעבר לסטודיו מבני נתונים (תור, מחסנית, חוליה, עץ)">🔄 לסטודיו מבני נתונים</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- גוף המערכת - חלוקה ראשית לעמודות -->
+    <main class="main-container">
+
+        <!-- עמודה ימנית (בממשק RTL): במת המחשה ויזואלית ומעקב (Visual Panel) -->
+        <section class="visual-panel">
+
+            <!-- במת הזיכרון הראשית: מפת ערימה ומחסנית / תרשים UML -->
+            <div class="card memory-stage-card">
+                <div class="card-header tabs-header">
+                    <div class="tabs-nav">
+                        <button type="button" class="tab-btn active" id="tab-btn-memory">
+                            <span>📦</span>
+                            <span>מפת זיכרון Stack &amp; Heap (בובות רוסיות)</span>
+                        </button>
+                        <button type="button" class="tab-btn" id="tab-btn-uml">
+                            <span>🏛️</span>
+                            <span>תרשים היררכיה סטטי (Class Diagram UML)</span>
+                        </button>
+                    </div>
+                    <div class="card-header-actions">
+                        <span class="badge" style="background: #e0e7ff; color: #3730a3;">Heap ➔ בובות קונצנטריות</span>
+                    </div>
+                </div>
+
+                <div class="tab-content-container">
+                    <!-- לשונית 1: מפת זיכרון ערימה ומחסנית -->
+                    <div class="tab-pane active" id="tab-pane-memory">
+                        <div class="memory-canvas">
+                            <svg id="svg-arrow-layer" class="svg-arrow-layer"></svg>
+
+                            <!-- עמודת מחסנית (Stack - משתני הפניה) -->
+                            <div class="stack-section">
+                                <div class="section-header">
+                                    <span>מחסנית (Stack)</span>
+                                    <span style="font-size: 0.7rem; color: #64748b;">טיפוס מוצהר</span>
+                                </div>
+                                <div id="stack-list" class="stack-list"></div>
+                            </div>
+
+                            <!-- עמודת ערימה (Heap - אובייקטים ושכבות הורשה קונצנטריות) -->
+                            <div class="heap-section">
+                                <div class="section-header">
+                                    <span>ערימה (Heap - אובייקטים קונצנטריים)</span>
+                                    <span style="font-size: 0.7rem; color: #64748b;">[C נגזרת ➔ [B ביניים ➔ [A בסיס]]]</span>
+                                </div>
+                                <div id="heap-stage" class="heap-stage"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- לשונית 2: תרשים היררכיה UML סטטי -->
+                    <div class="tab-pane" id="tab-pane-uml">
+                        <div id="uml-stage" class="uml-stage"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- כרטיסיות מעקב תחתונות: משתנים, מחסנית קריאות ומסוף פלט -->
+            <div class="card inspection-tabs-card">
+                <div class="card-header tabs-header">
+                    <div class="tabs-nav">
+                        <button type="button" class="tab-btn active" id="tab-btn-vars">
+                            <span>🔍</span>
+                            <span>מעקב משתנים (Variables)</span>
+                        </button>
+                        <button type="button" class="tab-btn" id="tab-btn-stack">
+                            <span>📚</span>
+                            <span>מחסנית קריאות (Call Stack)</span>
+                        </button>
+                        <button type="button" class="tab-btn" id="tab-btn-console">
+                            <span>📟</span>
+                            <span>מסוף פלט (Console)</span>
+                            <span class="badge" id="console-count-badge">0 שורות</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tab-content-container">
+                    <!-- לשונית משתנים -->
+                    <div class="tab-pane active" id="tab-pane-vars">
+                        <div class="table-scroll-wrapper">
+                            <table class="watch-table">
+                                <thead>
+                                    <tr>
+                                        <th>שם משתנה</th>
+                                        <th>טיפוס מוצהר</th>
+                                        <th>ערך נוכחי / כתובת ב-Heap</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variables-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- לשונית מחסנית קריאות -->
+                    <div class="tab-pane" id="tab-pane-stack">
+                        <div id="call-stack-list" class="call-stack-list"></div>
+                    </div>
+
+                    <!-- לשונית קונסול -->
+                    <div class="tab-pane" id="tab-pane-console">
+                        <div id="console-output" class="console-card-pane">
+                            <div style="color: #64748b;">הפלט של Console.WriteLine יופיע כאן...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- מפריד שינוי רוחב אופקי בין חלון ההמחשה לעורך -->
+        <div class="layout-splitter-horizontal" id="layout-splitter-horizontal" title="גרור לשינוי יחס הרוחב בין הבמה לעורך">
+            <div class="splitter-handle-bar"></div>
+        </div>
+
+        <!-- עמודה שמאלית (בממשק RTL): עורך קוד C# ובקרת ריצה (Editor & Controls) -->
+        <div class="editor-column">
+
+            <!-- 1. סרגל בקרת הרצה וניפוי שגיאות -->
+            <div class="card controls-card">
+                <div class="card-header">
+                    <span>⏯️ בקרת הרצה וניפוי שגיאות (Time-Travel Debugger)</span>
+                    <div id="step-counter" class="step-info">צעד 1 / 1</div>
+                </div>
+                <div class="controls-bar-body">
+                    <div class="control-btn-group">
+                        <button id="btn-play" class="btn btn-success">▶ נגן</button>
+                        <button id="btn-step-prev" class="btn btn-secondary">צעד קודם ◀</button>
+                        <button id="btn-step-next" class="btn btn-primary">▶ צעד הבא</button>
+                        <button id="btn-reset" class="btn btn-danger">איפוס ↺</button>
+                    </div>
+                    <div class="speed-control">
+                        <label for="speed-slider">מהירות:</label>
+                        <input type="range" id="speed-slider" class="speed-slider" min="1" max="10" value="6">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. עורך קוד C# מרובה קבצים ולשוניות מחלקות -->
+            <section class="card editor-panel">
+                <div class="card-header">
+                    <span>💻 עורך קוד C# ומחלקות</span>
+                    <div class="card-header-actions">
+                        <select id="example-code-select" class="example-select" title="טען תבנית מוכנה">
+                            <option value="clean_chain" selected>🔹 שרשרת 3 רמות: A ➔ B ➔ C (שרשור בנאים ו-Show)</option>
+                            <option value="clean">✨ פרויקט נקי (רק Program.Main ריק)</option>
+                            <option value="basic_chain">📜 שרשרת מורחבת: A ➔ B ➔ C (מחרוזות ובנאים)</option>
+                            <option value="employee_hierarchy">💼 היררכיית עובדים: Employee ➔ Manager / Developer (מערך הטרוגני)</option>
+                        </select>
+                        <span class="badge" title="לחץ Ctrl+Space להשלמה אוטומטית">Ctrl+Space</span>
+                    </div>
+                </div>
+
+                <!-- סרגל לשוניות קבצים -->
+                <div class="editor-tabs-bar">
+                    <div class="editor-tabs-list" id="editor-tabs-list"></div>
+                    <button type="button" class="btn-add-class-tab" id="btn-add-class-tab" title="הוסף קובץ מחלקה חדש">
+                        <span>➕</span>
+                        <span>מחלקה חדשה</span>
+                    </button>
+                </div>
+
+                <!-- אזור הקוד -->
+                <div class="editor-wrapper">
+                    <div class="line-numbers" id="line-numbers">1<br>2<br>3<br></div>
+                    <div class="code-container">
+                        <div id="code-highlighter"></div>
+                        <textarea id="code-textarea" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+
+                        <!-- חלון השלמה אוטומטית IntelliSense -->
+                        <div id="autocomplete-popup" class="autocomplete-popup" style="display: none;">
+                            <div class="autocomplete-list"></div>
+                            <div class="autocomplete-doc"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. סרגל משוב פדגוגי בעברית -->
+            <div id="status-banner" class="status-banner info">
+                <div class="status-content">
+                    <span id="status-icon" class="status-icon">💡</span>
+                    <span id="status-text">מוכן להרצה. לחץ על "צעד הבא" או "נגן" להתחלה.</span>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- סקריפטים -->
+    <script src="js/csharp_oop_interpreter.js"></script>
+    <script src="js/autocomplete.js"></script>
+    <script src="js/visualizer.js"></script>
+</body>
+</html>
