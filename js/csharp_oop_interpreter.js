@@ -151,7 +151,8 @@ class CSharpOOPInterpreter {
                 const paramsStr = methodMatch[6].trim();
 
                 const params = this.parseParams(paramsStr);
-                const bodyLines = trimmed.includes(';') ? { lines: [], endLine: lineNum } : this.extractBlockBody(lines, i);
+                const isAbstract = modifier === 'abstract' || (!trimmed.includes('{') && trimmed.endsWith(';'));
+                const bodyLines = isAbstract ? { lines: [], endLine: lineNum } : this.extractBlockBody(lines, i);
 
                 currentClass.methods[methodName] = {
                     name: methodName,
@@ -343,11 +344,21 @@ class CSharpOOPInterpreter {
 
         // חילוץ השורות הפנימיות ללא ה-{ וה-} החיצוניים
         let innerLines = [...bodyLines];
-        if (innerLines.length > 0 && innerLines[0].text.trim().startsWith('{')) {
-            innerLines.shift();
-        }
-        if (innerLines.length > 0 && innerLines[innerLines.length - 1].text.trim().endsWith('}')) {
-            innerLines.pop();
+        if (innerLines.length === 1) {
+            const raw = innerLines[0].text;
+            const firstBrace = raw.indexOf('{');
+            const lastBrace = raw.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+                const inside = raw.substring(firstBrace + 1, lastBrace).trim();
+                innerLines = inside ? [{ text: inside, lineNum: innerLines[0].lineNum }] : [];
+            }
+        } else {
+            if (innerLines.length > 0 && innerLines[0].text.trim().startsWith('{')) {
+                innerLines.shift();
+            }
+            if (innerLines.length > 0 && innerLines[innerLines.length - 1].text.trim().endsWith('}')) {
+                innerLines.pop();
+            }
         }
 
         let i = 0;
@@ -627,20 +638,22 @@ class CSharpOOPInterpreter {
                 continue;
             }
 
-            // 10. קריאה לפעולה על אובייקט (עם פולימורפיזם): obj.Method(args) או var = obj.Method(args)
-            const methodCallMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*=\s*)?(?:([A-Za-z0-9_]+)\s*=\s*)?([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\((.*)\)\s*;?$/);
-            if (methodCallMatch && methodCallMatch[4] !== 'Console') {
-                const returnDeclType = methodCallMatch[1] || null;
-                const assignVar = methodCallMatch[2] || methodCallMatch[3] || null;
-                const targetObjName = methodCallMatch[4];
-                const methodName = methodCallMatch[5];
-                const argsStr = methodCallMatch[6];
+            // 10. קריאה לפעולה על אובייקט עם המרת טיפוס (Explicit Casting): ((C)obj).Show() או (C)obj.show()
+            const castMethodCallMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*=\s*)?(?:([A-Za-z0-9_]+)\s*=\s*)?\(+\s*([A-Za-z0-9_]+)\s*\)?\s*([A-Za-z0-9_]+)\s*\)?\.([A-Za-z0-9_]+)\s*\((.*)\)\s*;?$/);
+            if (castMethodCallMatch) {
+                const returnDeclType = castMethodCallMatch[1] || null;
+                const assignVar = castMethodCallMatch[2] || castMethodCallMatch[3] || null;
+                const targetCastType = castMethodCallMatch[4];
+                const targetObjName = castMethodCallMatch[5];
+                const methodName = castMethodCallMatch[6];
+                const argsStr = castMethodCallMatch[7];
 
-                const returnVal = this.invokeMethod(targetObjName, methodName, argsStr, ctx, filename, lineNum);
+                const returnVal = this.invokeMethod(targetObjName, methodName, argsStr, ctx, filename, lineNum, targetCastType);
                 if (assignVar) {
                     ctx.scope[assignVar] = returnVal;
-                    const vType = returnDeclType || (typeof returnVal === 'number' ? 'double' : typeof returnVal === 'boolean' ? 'bool' : 'string');
-                    this.syncStackVar(assignVar, vType, returnVal, false);
+                    const isRef = typeof returnVal === 'string' && !!this.heap[returnVal];
+                    const vType = returnDeclType || (isRef ? this.heap[returnVal].className : (typeof returnVal === 'number' ? 'double' : typeof returnVal === 'boolean' ? 'bool' : 'string'));
+                    this.syncStackVar(assignVar, vType, returnVal, isRef);
 
                     this.pushSnapshot({
                         file: filename,
@@ -653,7 +666,70 @@ class CSharpOOPInterpreter {
                 continue;
             }
 
-            // 11. הצהרת משתנה פרימיטיבי רגיל: int x = 10; double sum = 0; bool flag = true;
+            // 10ב. קריאה לפעולה על אובייקט (עם פולימורפיזם): obj.Method(args) או var = obj.Method(args)
+            const methodCallMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*=\s*)?(?:([A-Za-z0-9_]+)\s*=\s*)?([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\((.*)\)\s*;?$/);
+            if (methodCallMatch && methodCallMatch[4] !== 'Console' && methodCallMatch[4] !== 'Math') {
+                const returnDeclType = methodCallMatch[1] || null;
+                const assignVar = methodCallMatch[2] || methodCallMatch[3] || null;
+                const targetObjName = methodCallMatch[4];
+                const methodName = methodCallMatch[5];
+                const argsStr = methodCallMatch[6];
+
+                const returnVal = this.invokeMethod(targetObjName, methodName, argsStr, ctx, filename, lineNum);
+                if (assignVar) {
+                    ctx.scope[assignVar] = returnVal;
+                    const isRef = typeof returnVal === 'string' && !!this.heap[returnVal];
+                    const vType = returnDeclType || (isRef ? this.heap[returnVal].className : (typeof returnVal === 'number' ? 'double' : typeof returnVal === 'boolean' ? 'bool' : 'string'));
+                    this.syncStackVar(assignVar, vType, returnVal, isRef);
+
+                    this.pushSnapshot({
+                        file: filename,
+                        line: lineNum,
+                        desc: `השמת ערך חוזר מפעולה: ${assignVar} = ${returnVal}`,
+                        action: "assign",
+                        activeLineText: text
+                    });
+                }
+                continue;
+            }
+
+            // 11. הצהרה או השמה עם המרת טיפוס (Casting Assignment): C c = (C)obj; או c = (C)obj;
+            const castAssignMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+)?([A-Za-z0-9_]+)\s*=\s*\(+\s*([A-Za-z0-9_]+)\s*\)?\s*([A-Za-z0-9_]+)\s*\)?\s*;?$/);
+            if (castAssignMatch && !text.includes('new ')) {
+                const declType = castAssignMatch[1] || null;
+                const targetVar = castAssignMatch[2];
+                const castType = castAssignMatch[3];
+                const sourceVar = castAssignMatch[4];
+
+                const srcHeapId = ctx.scope[sourceVar] !== undefined ? ctx.scope[sourceVar] : this.stack[sourceVar]?.value;
+                const heapObj = this.heap[srcHeapId];
+
+                if (heapObj) {
+                    if (!heapObj.hierarchy.includes(castType)) {
+                        throw new Error(`InvalidCastException: לא ניתן להמיר אובייקט מטיפוס '${heapObj.className}' לטיפוס '${castType}'.`);
+                    }
+
+                    const finalType = declType && declType !== 'var' ? declType : castType;
+                    ctx.scope[targetVar] = srcHeapId;
+                    this.syncStackVar(targetVar, finalType, srcHeapId, true);
+
+                    this.pushSnapshot({
+                        file: filename,
+                        line: lineNum,
+                        desc: `המרת טיפוס (Casting) והשמת הפניה: משתנה '${targetVar}' מטיפוס [${finalType}] מצביע לאובייקט [${heapObj.className}] בכתובת ${srcHeapId} (מתוך '${sourceVar}')`,
+                        action: "cast_assign",
+                        highlightAction: "reference_assign",
+                        targetVar: targetVar,
+                        heapId: srcHeapId,
+                        declaredType: finalType,
+                        runtimeType: heapObj.className,
+                        activeLineText: text
+                    });
+                    continue;
+                }
+            }
+
+            // 12. הצהרת משתנה פרימיטיבי או העתקת רפרנס: int x = 10; A obj2 = obj;
             const primDeclMatch = text.match(/^([A-Za-z0-9_<>]+)\s+([A-Za-z0-9_]+)\s*(?:=\s*(.*))?;?$/);
             if (primDeclMatch && !text.includes('(')) {
                 const type = primDeclMatch[1];
@@ -664,21 +740,26 @@ class CSharpOOPInterpreter {
                 if (rhs) {
                     val = this.evaluateExpression(rhs.replace(/;$/, '').trim(), ctx);
                 }
+                const isRef = (typeof val === 'string' && !!this.heap[val]);
                 ctx.scope[name] = val;
-                this.syncStackVar(name, type, val, false);
+                this.syncStackVar(name, type, val, isRef);
 
                 this.pushSnapshot({
                     file: filename,
                     line: lineNum,
-                    desc: `הצהרת משתנה ב-Stack: ${type} ${name} = ${val}`,
-                    action: "var_decl",
+                    desc: isRef
+                        ? `העתקת הפניה ב-Stack: משתנה '${name}' מטיפוס [${type}] מצביע לאובייקט בכתובת ${val}`
+                        : `הצהרת משתנה ב-Stack: ${type} ${name} = ${val}`,
+                    action: isRef ? "new_object" : "var_decl",
+                    highlightAction: isRef ? "reference_assign" : null,
                     targetVar: name,
+                    heapId: isRef ? val : null,
                     activeLineText: text
                 });
                 continue;
             }
 
-            // 12. השמה למשתנה פרימיטיבי או שדה: x += 5; this.field = val;
+            // 13. השמה למשתנה פרימיטיבי או שדה: x += 5; this.field = val;
             const assignMatch = text.match(/^((?:this\.)?[A-Za-z0-9_]+)\s*(\+=|-=|\*=|\/=|%=|=)\s*(.*);?$/);
             if (assignMatch) {
                 const lhs = assignMatch[1];
@@ -710,8 +791,9 @@ class CSharpOOPInterpreter {
                     let currVal = ctx.scope[lhs] !== undefined ? ctx.scope[lhs] : (this.stack[lhs]?.value || 0);
                     const newVal = this.applyOp(currVal, op, rhsVal);
                     ctx.scope[lhs] = newVal;
-                    const vType = this.stack[lhs]?.type || (typeof newVal === 'number' ? 'int' : 'string');
-                    this.syncStackVar(lhs, vType, newVal, false);
+                    const isRef = typeof newVal === 'string' && !!this.heap[newVal];
+                    const vType = this.stack[lhs]?.type || (isRef ? this.heap[newVal].className : (typeof newVal === 'number' ? 'int' : 'string'));
+                    this.syncStackVar(lhs, vType, newVal, isRef);
 
                     this.pushSnapshot({
                         file: filename,
@@ -926,9 +1008,9 @@ class CSharpOOPInterpreter {
     }
 
     /**
-     * זימון פעולה עם פולימורפיזם והכרעה דינמית (Dynamic Dispatch)
+     * זימון פעולה עם פולימורפיזם והכרעה דינמית (Dynamic Dispatch) ותמיכה ב-Casting
      */
-    invokeMethod(targetObjName, methodName, argsStr, callerCtx, callerFile, callerLine) {
+    invokeMethod(targetObjName, methodName, argsStr, callerCtx, callerFile, callerLine, explicitCastType = null) {
         // מציאת הפניית האובייקט ב-Stack
         const heapId = callerCtx.scope[targetObjName] !== undefined ? callerCtx.scope[targetObjName] : this.stack[targetObjName]?.value;
         const heapObj = this.heap[heapId];
@@ -937,23 +1019,32 @@ class CSharpOOPInterpreter {
             throw new Error(`NullReferenceException: המשתנה '${targetObjName}' אינו מצביע על אובייקט ב-Heap.`);
         }
 
-        const declaredType = this.stack[targetObjName]?.type || heapObj.className;
+        // בדיקת תקינות המרה מפורשת (Casting / Downcasting)
+        if (explicitCastType) {
+            if (!heapObj.hierarchy.includes(explicitCastType)) {
+                throw new Error(`InvalidCastException: לא ניתן להמיר אובייקט מטיפוס '${heapObj.className}' לטיפוס '${explicitCastType}'.`);
+            }
+        }
+
+        const declaredType = explicitCastType || this.stack[targetObjName]?.type || heapObj.className;
         const runtimeType = heapObj.className;
         const args = this.splitArgs(argsStr).map(arg => this.evaluateExpression(arg, callerCtx));
 
         // 1. הנפשת הכרעה דינמית: חיפוש פעולה משכבת הריצה RuntimeType ועלייה בשכבות
+        // תמיכה בחיפוש רגיל או case-insensitive (למשל Show מול show)
         const searchHierarchy = [...heapObj.hierarchy].reverse(); // מ-C ל-B ל-A
         let resolvedMethod = null;
         let resolvedClass = null;
 
         for (const layerName of searchHierarchy) {
             const cls = this.classes[layerName];
-            if (cls && cls.methods[methodName]) {
-                const m = cls.methods[methodName];
-                // אם הגענו לשכבה הנגזרת והיא דורסת (override) או מממשת
-                resolvedMethod = m;
-                resolvedClass = layerName;
-                break;
+            if (cls) {
+                const m = cls.methods[methodName] || Object.values(cls.methods).find(method => method.name.toLowerCase() === methodName.toLowerCase());
+                if (m) {
+                    resolvedMethod = m;
+                    resolvedClass = layerName;
+                    break;
+                }
             }
         }
 
@@ -964,20 +1055,29 @@ class CSharpOOPInterpreter {
         const isPolymorphic = declaredType !== runtimeType;
         const isOverride = resolvedMethod.isOverride;
 
+        // ניסוח תיאור פדגוגי בעברית
+        let stepDesc = '';
+        if (explicitCastType) {
+            const origDeclared = this.stack[targetObjName]?.type || declaredType;
+            stepDesc = `המרה מפורשת (Downcasting) וזימון פעולה: ((${explicitCastType})${targetObjName}).${resolvedMethod.name}()! המרת טיפוס ההפניה מ-[${origDeclared}] ל-[${explicitCastType}]. החיפוש החל בשכבה [${runtimeType}] ונמצא מימוש ${isOverride ? 'דרוס (override)' : ''} בשכבת [${resolvedClass}]!`;
+        } else if (isPolymorphic) {
+            stepDesc = `הכרעה דינמית (Polymorphism): זימון ${targetObjName}.${resolvedMethod.name}()! טיפוס מוצהר ב-Stack: [${declaredType}], אובייקט בפועל ב-Heap: [${runtimeType}]. החיפוש החל בשכבה [${runtimeType}] ונמצא מימוש ${isOverride ? 'דרוס (override)' : ''} בשכבת [${resolvedClass}]!`;
+        } else {
+            stepDesc = `זימון פעולה: ${targetObjName}.${resolvedMethod.name}() בשכבת [${resolvedClass}]`;
+        }
+
         // סנאפשוט שלב Dynamic Dispatch עם הסבר פדגוגי מפורט
         this.pushSnapshot({
             file: callerFile,
             line: callerLine,
-            desc: isPolymorphic
-                ? `הכרעה דינמית (Polymorphism): זימון ${targetObjName}.${methodName}()! טיפוס מוצהר ב-Stack: [${declaredType}], אובייקט בפועל ב-Heap: [${runtimeType}]. החיפוש החל בשכבה [${runtimeType}] ונמצא מימוש ${isOverride ? 'דרוס (override)' : ''} בשכבת [${resolvedClass}]!`
-                : `זימון פעולה: ${targetObjName}.${methodName}() בשכבת [${resolvedClass}]`,
+            desc: stepDesc,
             action: "dynamic_dispatch",
             highlightAction: "dynamic_dispatch",
             targetVar: targetObjName,
             heapId: heapId,
             declaredType: declaredType,
             runtimeType: runtimeType,
-            methodName: methodName,
+            methodName: resolvedMethod.name,
             resolvedClass: resolvedClass,
             isOverride: isOverride,
             searchPath: searchHierarchy
@@ -985,7 +1085,7 @@ class CSharpOOPInterpreter {
 
         // 2. כניסה לביצוע הפעולה
         this.callStack.push({
-            name: `${resolvedClass}.${methodName}()`,
+            name: `${resolvedClass}.${resolvedMethod.name}()`,
             className: resolvedClass,
             filename: resolvedMethod.filename,
             line: resolvedMethod.startLine
@@ -1073,6 +1173,16 @@ class CSharpOOPInterpreter {
             return '0';
         });
 
+        // החלפת קריאות לפעולות אובייקט עם המרת טיפוס (Casting): ((C)obj).Method(args) או (C)obj.Method(args)
+        expr = expr.replace(/\(?\(([A-Za-z0-9_]+)\)\s*([A-Za-z0-9_]+)\)?\.([A-Za-z0-9_]+)\s*\(([^)]*)\)/g, (m, castType, targetName, methodName, argsStr) => {
+            const heapId = ctx.scope[targetName] !== undefined ? ctx.scope[targetName] : this.stack[targetName]?.value;
+            if (heapId && this.heap[heapId]) {
+                const ret = this.invokeMethod(targetName, methodName, argsStr, ctx, this.classes[ctx.className]?.filename || 'Program.cs', 1, castType);
+                return typeof ret === 'string' ? JSON.stringify(ret) : ret;
+            }
+            return m;
+        });
+
         // החלפת קריאות לפעולות אובייקט בתוך ביטוי: obj.Method(args)
         expr = expr.replace(/\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\(([^)]*)\)/g, (m, targetName, methodName, argsStr) => {
             if (targetName === 'Console' || targetName === 'Math') return m;
@@ -1080,6 +1190,15 @@ class CSharpOOPInterpreter {
             if (heapId && this.heap[heapId]) {
                 const ret = this.invokeMethod(targetName, methodName, argsStr, ctx, this.classes[ctx.className]?.filename || 'Program.cs', 1);
                 return typeof ret === 'string' ? JSON.stringify(ret) : ret;
+            }
+            return m;
+        });
+
+        // החלפת המרת טיפוס מפורשת של רפרנס: (TargetType)varName או ((TargetType)varName)
+        expr = expr.replace(/\(?\(([A-Za-z0-9_]+)\)\s*([A-Za-z0-9_]+)\)?/g, (m, castType, varName) => {
+            const heapId = ctx.scope[varName] !== undefined ? ctx.scope[varName] : this.stack[varName]?.value;
+            if (heapId && this.heap[heapId]) {
+                return JSON.stringify(heapId);
             }
             return m;
         });

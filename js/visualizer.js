@@ -34,17 +34,20 @@ class OOPVisualizerApp {
                 }
             },
             'clean_chain': {
-                name: '🔹 שרשרת 3 רמות: A ➔ B ➔ C (שרשור בנאים ו-Show)',
+                name: '🔹 שרשרת 3 רמות: A ➔ B ➔ C (פולימורפיזם, בנאים ו-Show)',
                 files: {
                     'Program.cs': `class Program
 {
     static void Main()
     {
-        // יצירת אובייקט C המכיל את שכבות B ו-A
-        C obj = new C(10, 20, 30);
+        // 1. פולימורפיזם: משתנה מטיפוס בסיס A מצביע על אובייקט נגזר C בערימה
+        A obj = new C(10, 20, 30);
 
-        // הפעלת פעולה דרוסה
+        // 2. הפעלת פעולה פולימורפית דרוסה (Dynamic Dispatch)
         obj.Show();
+
+        // 3. המרת טיפוס מפורשת (Downcasting) וזימון פעולה
+        ((C)obj).Show();
     }
 }`,
                     'A.cs': `public class A
