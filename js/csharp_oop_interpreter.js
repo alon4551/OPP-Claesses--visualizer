@@ -48,8 +48,8 @@ class CSharpOOPInterpreter {
 
             if (!trimmed) continue;
 
-            // בדיקת הגדרת מחלקה: [public/abstract/internal] class ClassName [: BaseClass]
-            const classMatch = trimmed.match(/(?:public\s+|abstract\s+|internal\s+)*class\s+([A-Za-z0-9_]+)(?:\s*:\s*([A-Za-z0-9_]+))?/);
+            // בדיקת הגדרת מחלקה: [public/abstract/internal] class ClassName [: BaseClass / extends BaseClass]
+            const classMatch = trimmed.match(/(?:public\s+|abstract\s+|internal\s+)*class\s+([A-Za-z0-9_]+)(?:\s*(?::|extends)\s*([A-Za-z0-9_]+))?/);
             if (classMatch && !currentClass) {
                 const className = classMatch[1];
                 const baseClass = classMatch[2] || null;
@@ -120,14 +120,44 @@ class CSharpOOPInterpreter {
             const ctorMatch = fullCtorHeader.match(ctorRegex);
             if (ctorMatch) {
                 const paramsStr = ctorMatch[1].trim();
-                const chainType = ctorMatch[2] || (currentClass.baseClass ? 'base' : null);
+                let chainType = ctorMatch[2] || null;
                 const chainArgsStr = ctorMatch[3] ? ctorMatch[3].trim() : '';
 
                 const params = this.parseParams(paramsStr);
-                const chainArgs = chainArgsStr ? this.splitArgs(chainArgsStr) : [];
+                let chainArgs = chainArgsStr ? this.splitArgs(chainArgsStr) : [];
 
                 // חילוץ גוף הבנאי
                 const bodyLines = this.extractBlockBody(lines, i);
+
+                // תמיכה בשרשור בנאים בסגנון Java: super(...) או this(...) בשורה הראשונה של גוף הבנאי
+                if (!chainType && bodyLines.lines.length > 0) {
+                    for (let bIdx = 0; bIdx < bodyLines.lines.length; bIdx++) {
+                        const bText = bodyLines.lines[bIdx].text.trim();
+                        if (!bText || bText === '{' || bText.startsWith('//')) continue;
+                        const superMatch = bText.match(/^super\s*\((.*)\)\s*;?$/);
+                        if (superMatch) {
+                            chainType = 'base';
+                            chainArgs = this.splitArgs(superMatch[1]);
+                            bodyLines.lines[bIdx] = { text: '// ' + bText, lineNum: bodyLines.lines[bIdx].lineNum };
+                            break;
+                        }
+                        const thisMatch = bText.match(/^this\s*\((.*)\)\s*;?$/);
+                        if (thisMatch) {
+                            chainType = 'this';
+                            chainArgs = this.splitArgs(thisMatch[1]);
+                            bodyLines.lines[bIdx] = { text: '// ' + bText, lineNum: bodyLines.lines[bIdx].lineNum };
+                            break;
+                        }
+                        break;
+                    }
+                }
+
+                // אם לא צוין שרשור מפורש אך קיימת מחלקת אב, מתבצע זימון מרומז של בנאי האב הריק (Default super())
+                if (!chainType && currentClass.baseClass) {
+                    chainType = 'base';
+                    chainArgs = [];
+                }
+
                 currentClass.constructors.push({
                     params: params,
                     chainType: chainType,
@@ -141,11 +171,15 @@ class CSharpOOPInterpreter {
             }
 
             // זיהוי מתודות: [public/protected/private] [static] [virtual/override/new/abstract] [returnType] MethodName(params)
-            const methodMatch = trimmed.match(/^(?:(public|protected|private)\s+)?(?:(static)\s+)?(?:(virtual|override|new|abstract)\s+)?([A-Za-z0-9_<>\[\]]+)\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)/);
+            // תמיכה גם באנוטציית @Override (בג'אווה) או שורה קודמת עם @Override
+            const hasOverrideAnnotation = (i > 0 && lines[i - 1].trim().toLowerCase() === '@override') || trimmed.toLowerCase().startsWith('@override');
+            const cleanMethodLine = trimmed.replace(/^@Override\s+/i, '');
+
+            const methodMatch = cleanMethodLine.match(/^(?:(public|protected|private)\s+)?(?:(static)\s+)?(?:(virtual|override|new|abstract)\s+)?([A-Za-z0-9_<>\[\]]+)\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)/);
             if (methodMatch && methodMatch[5] !== currentClass.name) {
-                const access = methodMatch[1] || 'private';
+                const access = methodMatch[1] || 'public';
                 const isStatic = !!methodMatch[2];
-                const modifier = methodMatch[3] || 'normal';
+                const modifier = methodMatch[3] || (hasOverrideAnnotation ? 'override' : 'normal');
                 const returnType = methodMatch[4];
                 const methodName = methodMatch[5];
                 const paramsStr = methodMatch[6].trim();
@@ -158,8 +192,8 @@ class CSharpOOPInterpreter {
                     name: methodName,
                     access: access,
                     isStatic: isStatic,
-                    isVirtual: modifier === 'virtual',
-                    isOverride: modifier === 'override',
+                    isVirtual: modifier === 'virtual' || !isStatic, // בג'אווה כל פעולת מופע היא וירטואלית כברירת מחדל
+                    isOverride: modifier === 'override' || hasOverrideAnnotation,
                     isAbstract: modifier === 'abstract',
                     modifier: modifier,
                     returnType: returnType,
@@ -278,11 +312,28 @@ class CSharpOOPInterpreter {
                 curr = this.classes[curr].baseClass;
             }
             cls.hierarchy = hierarchy; // למשל: ['A', 'B', 'C']
+
+            // סימון דריסת פעולות (Overriding) עבור Java ו-C# אם קיימת פעולה תואמת במחלקת אב
+            for (const [mName, mDef] of Object.entries(cls.methods)) {
+                if (mDef.isStatic) continue;
+                for (const ancestor of hierarchy) {
+                    if (ancestor === name) continue;
+                    const ancCls = this.classes[ancestor];
+                    if (ancCls) {
+                        const ancMethod = ancCls.methods[mName] || Object.values(ancCls.methods).find(am => am.name.toLowerCase() === mName.toLowerCase());
+                        if (ancMethod) {
+                            ancMethod.isVirtual = true;
+                            mDef.isOverride = true;
+                            mDef.isVirtual = true;
+                        }
+                    }
+                }
+            }
         }
     }
 
     /**
-     * מריץ את התוכנית מנקודת הכניסה Program.Main ומייצר סנאפשוטים לדיבאגר
+     * מריץ את התוכנית מנקודת הכניסה (Program.Main או Main.main) ומייצר סנאפשוטים לדיבאגר
      */
     execute(files) {
         this.parseFiles(files);
@@ -293,36 +344,52 @@ class CSharpOOPInterpreter {
         this.consoleLines = [];
         this.heapCounter = 101;  // כתובות זיכרון ערימה מדומה (למשל 0x101)
 
-        const prog = this.classes['Program'];
-        if (!prog) {
-            throw new Error("לא נמצאה מחלקה בשם Program בתוכנית.");
+        // איתור מחלקת הכניסה: Program או Main או כל מחלקה המכילה Main() או main()
+        let prog = this.classes['Program'] || this.classes['Main'];
+        let mainMethod = null;
+
+        if (prog) {
+            mainMethod = prog.methods['Main'] || prog.methods['main'] || Object.values(prog.methods).find(m => m.name.toLowerCase() === 'main');
         }
 
-        const mainMethod = prog.methods['Main'];
         if (!mainMethod) {
-            throw new Error("לא נמצאה פעולה בשם Main() במחלקה Program.");
+            for (const cls of Object.values(this.classes)) {
+                const m = cls.methods['Main'] || cls.methods['main'] || Object.values(cls.methods).find(method => method.name.toLowerCase() === 'main');
+                if (m) {
+                    prog = cls;
+                    mainMethod = m;
+                    break;
+                }
+            }
         }
+
+        if (!prog || !mainMethod) {
+            throw new Error("לא נמצאה פעולה ראשית Main() או main() באף מחלקה בתוכנית (Java / C#).");
+        }
+
+        const entryClassName = prog.name;
+        const entryMethodName = mainMethod.name;
 
         // סנאפשוט התחלה
         this.pushSnapshot({
             file: mainMethod.filename,
             line: mainMethod.startLine,
-            desc: "נקודת כניסה: הפעלת Program.Main()",
+            desc: `נקודת כניסה: הפעלת ${entryClassName}.${entryMethodName}()`,
             action: "start"
         });
 
         // דחיפה למחסנית קריאות
         this.callStack.push({
-            name: 'Main',
-            className: 'Program',
+            name: `${entryClassName}.${entryMethodName}()`,
+            className: entryClassName,
             filename: mainMethod.filename,
             line: mainMethod.startLine
         });
 
-        // הרצת שורות הפעולה Main
+        // הרצת שורות הפעולה הראשית
         const executionContext = {
             scope: {},
-            className: 'Program',
+            className: entryClassName,
             thisObj: null
         };
 
@@ -382,10 +449,10 @@ class CSharpOOPInterpreter {
             i++;
             if (!text || text === '{' || text === '}') continue;
 
-            // 1. קונסול הדפסה: Console.WriteLine(...)
-            const cwMatch = text.match(/Console\.(WriteLine|Write)\s*\((.*)\)\s*;?$/);
+            // 1. קונסול הדפסה: Console.WriteLine(...) / System.out.println(...)
+            const cwMatch = text.match(/(?:Console\.(?:WriteLine|Write)|System\.out\.(?:println|print))\s*\((.*)\)\s*;?$/);
             if (cwMatch) {
-                const expr = cwMatch[2];
+                const expr = cwMatch[1];
                 const evaluatedVal = this.evaluateExpression(expr, ctx);
                 const strVal = (evaluatedVal === null || evaluatedVal === undefined) ? "null" : String(evaluatedVal);
 
@@ -393,7 +460,7 @@ class CSharpOOPInterpreter {
                 this.pushSnapshot({
                     file: filename,
                     line: lineNum,
-                    desc: `הדפסה למסוף: Console.WriteLine("${strVal}")`,
+                    desc: `הדפסה למסוף: ${strVal}`,
                     action: "console",
                     highlightAction: "console_print",
                     activeLineText: text
@@ -666,9 +733,9 @@ class CSharpOOPInterpreter {
                 continue;
             }
 
-            // 10ב. קריאה לפעולה על אובייקט (עם פולימורפיזם): obj.Method(args) או var = obj.Method(args)
-            const methodCallMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*=\s*)?(?:([A-Za-z0-9_]+)\s*=\s*)?([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\((.*)\)\s*;?$/);
-            if (methodCallMatch && methodCallMatch[4] !== 'Console' && methodCallMatch[4] !== 'Math') {
+            // 10ב. קריאה לפעולה על אובייקט (עם פולימורפיזם): obj.Method(args) או team[i].Method(args) או var = obj.Method(args)
+            const methodCallMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*=\s*)?(?:([A-Za-z0-9_]+)\s*=\s*)?([A-Za-z0-9_]+(?:\[[^\]]+\])?)\.([A-Za-z0-9_]+)\s*\((.*)\)\s*;?$/);
+            if (methodCallMatch && methodCallMatch[4] !== 'Console' && methodCallMatch[4] !== 'Math' && methodCallMatch[4] !== 'System') {
                 const returnDeclType = methodCallMatch[1] || null;
                 const assignVar = methodCallMatch[2] || methodCallMatch[3] || null;
                 const targetObjName = methodCallMatch[4];
@@ -1011,8 +1078,21 @@ class CSharpOOPInterpreter {
      * זימון פעולה עם פולימורפיזם והכרעה דינמית (Dynamic Dispatch) ותמיכה ב-Casting
      */
     invokeMethod(targetObjName, methodName, argsStr, callerCtx, callerFile, callerLine, explicitCastType = null) {
-        // מציאת הפניית האובייקט ב-Stack
-        const heapId = callerCtx.scope[targetObjName] !== undefined ? callerCtx.scope[targetObjName] : this.stack[targetObjName]?.value;
+        // מציאת הפניית האובייקט ב-Stack או מתוך מערך
+        let heapId = null;
+        let declaredType = null;
+
+        if (targetObjName.includes('[')) {
+            heapId = this.evaluateExpression(targetObjName, callerCtx);
+            const arrName = targetObjName.split('[')[0];
+            const arrType = this.stack[arrName]?.type || '';
+            const baseElemType = arrType.endsWith('[]') ? arrType.slice(0, -2) : (this.heap[heapId]?.className || 'Object');
+            declaredType = explicitCastType || baseElemType;
+        } else {
+            heapId = callerCtx.scope[targetObjName] !== undefined ? callerCtx.scope[targetObjName] : this.stack[targetObjName]?.value;
+            declaredType = explicitCastType || this.stack[targetObjName]?.type || this.heap[heapId]?.className;
+        }
+
         const heapObj = this.heap[heapId];
 
         if (!heapObj) {
@@ -1026,7 +1106,6 @@ class CSharpOOPInterpreter {
             }
         }
 
-        const declaredType = explicitCastType || this.stack[targetObjName]?.type || heapObj.className;
         const runtimeType = heapObj.className;
         const args = this.splitArgs(argsStr).map(arg => this.evaluateExpression(arg, callerCtx));
 
@@ -1141,32 +1220,34 @@ class CSharpOOPInterpreter {
         if (expr === 'false') return false;
         if (expr === 'null') return null;
 
-        // החלפת גישה ל-Length של מערך: arr.Length בכל מקום בביטוי
-        expr = expr.replace(/\b([A-Za-z0-9_]+)\.Length\b/g, (m, arrVar) => {
+        // החלפת גישה ל-Length של מערך: arr.Length או arr.length בכל מקום בביטוי
+        expr = expr.replace(/\b([A-Za-z0-9_]+)\.(?:Length|length)\b/g, (m, arrVar) => {
             const arrHeapId = ctx.scope[arrVar] !== undefined ? ctx.scope[arrVar] : this.stack[arrVar]?.value;
             const heapObj = this.heap[arrHeapId];
             return heapObj && heapObj.isArray ? heapObj.size : 0;
         });
 
-        // החלפת קריאות base.Method(args) בתוך ביטוי
-        expr = expr.replace(/\bbase\.([A-Za-z0-9_]+)\s*\(([^)]*)\)/g, (m, methodName, argsStr) => {
+        // החלפת קריאות base.Method(args) או super.Method(args) בתוך ביטוי
+        expr = expr.replace(/\b(?:base|super)\.([A-Za-z0-9_]+)\s*\(([^)]*)\)/gi, (m, methodName, argsStr) => {
             if (ctx.thisObj && ctx.currentLayer) {
                 const currIdx = ctx.thisObj.hierarchy.indexOf(ctx.currentLayer);
                 if (currIdx > 0) {
                     const baseLayerName = ctx.thisObj.hierarchy[currIdx - 1];
                     const baseCls = this.classes[baseLayerName];
-                    if (baseCls && baseCls.methods[methodName]) {
-                        const methodDef = baseCls.methods[methodName];
-                        const nextCtx = {
-                            scope: {},
-                            className: baseLayerName,
-                            currentLayer: baseLayerName,
-                            thisObj: ctx.thisObj
-                        };
-                        const args = this.splitArgs(argsStr).map(a => this.evaluateExpression(a, ctx));
-                        methodDef.params.forEach((p, idx) => nextCtx.scope[p.name] = args[idx]);
-                        const ret = this.executeBlock(methodDef.bodyLines, nextCtx);
-                        return typeof ret === 'string' ? JSON.stringify(ret) : ret;
+                    if (baseCls) {
+                        const methodDef = baseCls.methods[methodName] || Object.values(baseCls.methods).find(bm => bm.name.toLowerCase() === methodName.toLowerCase());
+                        if (methodDef) {
+                            const nextCtx = {
+                                scope: {},
+                                className: baseLayerName,
+                                currentLayer: baseLayerName,
+                                thisObj: ctx.thisObj
+                            };
+                            const args = this.splitArgs(argsStr).map(a => this.evaluateExpression(a, ctx));
+                            methodDef.params.forEach((p, idx) => nextCtx.scope[p.name] = args[idx]);
+                            const ret = this.executeBlock(methodDef.bodyLines, nextCtx);
+                            return typeof ret === 'string' ? JSON.stringify(ret) : ret;
+                        }
                     }
                 }
             }
@@ -1299,8 +1380,8 @@ class CSharpOOPInterpreter {
         if (!cond || !cond.trim()) return true;
         cond = cond.trim();
 
-        // בדיקת is / as: (obj is Manager)
-        const isMatch = cond.match(/^([A-Za-z0-9_]+)\s+is\s+([A-Za-z0-9_]+)$/);
+        // בדיקת is / as / instanceof: (obj is Manager) או (obj instanceof Manager)
+        const isMatch = cond.match(/^([A-Za-z0-9_]+)\s+(?:is|instanceof)\s+([A-Za-z0-9_]+)$/);
         if (isMatch) {
             const varName = isMatch[1];
             const checkType = isMatch[2];
@@ -1310,8 +1391,8 @@ class CSharpOOPInterpreter {
             return heapObj.hierarchy.includes(checkType);
         }
 
-        // החלפת arr.Length בתוך תנאי
-        cond = cond.replace(/\b([A-Za-z0-9_]+)\.Length\b/g, (m, arrVar) => {
+        // החלפת arr.Length או arr.length בתוך תנאי
+        cond = cond.replace(/\b([A-Za-z0-9_]+)\.(?:Length|length)\b/g, (m, arrVar) => {
             const arrHeapId = ctx.scope[arrVar] !== undefined ? ctx.scope[arrVar] : this.stack[arrVar]?.value;
             const heapObj = this.heap[arrHeapId];
             return heapObj && heapObj.isArray ? heapObj.size : 0;
@@ -1432,8 +1513,8 @@ class CSharpOOPInterpreter {
     getDefaultValForType(type) {
         if (!type) return null;
         if (type === 'int' || type === 'double' || type === 'float') return 0;
-        if (type === 'bool') return false;
-        if (type === 'string') return "";
+        if (type === 'bool' || type === 'boolean') return false;
+        if (type === 'string' || type === 'String') return "";
         if (type === 'char') return ' ';
         return null;
     }

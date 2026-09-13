@@ -1,9 +1,34 @@
 <div dir="rtl">
 
-# מאייר ומפרש תכנות מונחה עצמים והורשה ב-C# (C# OOP & Inheritance Visualizer)
+# מאייר ומפרש תכנות מונחה עצמים והורשה — C# || Java (OOP & Inheritance Visualizer)
 ## מרכז מדעי המחשב — אלון שרייבמן | שכבת י"ב (יחידה 4) — תיכון מקיף דוד טוביהו
 
-יישום Web אינטראקטיבי עצמאי (Client-Side) המאפשר לתלמידים לכתוב, לערוך, להריץ ולדבג קוד C# בנושא **תכנות מונחה עצמים (OOP) והורשה (Inheritance)**, תוך צפייה במודל הזיכרון החזותי של **"בובות רוסיות" (Concentric Russian-Doll Blobs)**, שרשור בנאים (`base`), הכרעה דינמית בזמן ריצה (Dynamic Dispatch / Polymorphism) ומערכים הטרוגניים.
+יישום Web אינטראקטיבי עצמאי (Client-Side) המאפשר לתלמידים לכתוב, לערוך, להריץ ולדבג קוד **C#** או **Java** בנושא **תכנות מונחה עצמים (OOP) והורשה (Inheritance)**, תוך צפייה במודל הזיכרון החזותי של **"בובות רוסיות" (Concentric Russian-Doll Blobs)**, שרשור בנאים (`base` / `super`), הכרעה דינמית בזמן ריצה (Dynamic Dispatch / Polymorphism), בדיקת טיפוסים (`is` / `instanceof`), המרות טיפוסים (Downcasting) ומערכים הטרוגניים.
+
+---
+
+## 🌐 תמיכה דו-לשונית מלאה: C# ו-Java
+
+המערכת מאפשרת מעבר חלק בלחיצת כפתור אחת בין שתי שפות הלימוד המובילות במדעי המחשב:
+- **בורר שפה בכותרת הראשית**: מעבר בין כפתור **C#** (בגוון כחול זוהר) לבין **Java** (בגוון כתום-אדום).
+- **סביבת עבודה מותאמת שפה**:
+  - בלשוניות הקבצים: `Program.cs` עבור C# לעומת `Main.java` עבור Java. הוספת מחלקה יוצרת קובץ עם הסיומת המתאימה (`.cs` או `.java`).
+  - במנוע ההשלמה האוטומטית (IntelliSense): מילות מפתח, תבניות וקטעי קוד (Snippets) ייעודיים לכל שפה (`super`, `extends`, `@Override`, `System.out.println` לעומת `base`, `virtual`, `override`, `Console.WriteLine`).
+  - שמירת העדפה: בחירת השפה נשמרת אוטומטית ב-`localStorage` כך שהתלמיד חוזר תמיד לשפה שבחר.
+
+### 📋 השוואת תחביר בין השפות במערכת:
+| נושא | C# 🔷 | Java ☕ |
+| :--- | :--- | :--- |
+| **הגדרת הורשה** | `class B : A` | `class B extends A` |
+| **שרשור בנאים** | בכותרת הבנאי: `: base(x, y)` | בגוף הבנאי: `super(x, y);` (או זימון מרומז `super()`) |
+| **דריסת פעולות** | `virtual` בבסיס ו-`override` בנגזרת | ברירת מחדל וירטואלית, תמיכה באנוטציית `@Override` |
+| **זימון פעולת אב** | `base.Show();` | `super.show();` |
+| **הדפסה למסוף** | `Console.WriteLine(...)` | `System.out.println(...)` / `System.out.print(...)` |
+| **קובץ ופונקציית כניסה** | `Program.cs` (`class Program { static void Main() }`) | `Main.java` (`public class Main { public static void main(String[] args) }`) |
+| **בדיקת טיפוס בזמן ריצה** | `if (obj is C)` | `if (obj instanceof C)` |
+| **המרה מפורשת (Downcasting)** | `((C)obj).Show();` | `((C)obj).show();` |
+| **טיפוסים בסיסיים** | `int`, `double`, `bool`, `string` | `int`, `double`, `boolean`, `String` |
+| **אורך מערך** | `arr.Length` | `arr.length` |
 
 ---
 

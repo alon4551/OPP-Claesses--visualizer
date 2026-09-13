@@ -11,32 +11,23 @@ class OOPVisualizerApp {
         this.isPlaying = false;
         this.playTimer = null;
         this.files = {};
-        this.activeFilename = 'Program.cs';
+        this.currentLanguage = localStorage.getItem('oop_visualizer_lang') || 'csharp';
+        this.activeFilename = this.currentLanguage === 'java' ? 'Main.java' : 'Program.cs';
 
         this.initPresets();
         this.initDOM();
         this.attachEvents();
+        this.applyLanguageUI(this.currentLanguage);
         this.loadPreset('clean_chain');
     }
 
     initPresets() {
         this.presets = {
-            'clean': {
-                name: '✨ פרויקט נקי (רק Program.Main ריק)',
-                files: {
-                    'Program.cs': `class Program
-{
-    static void Main()
-    {
-        
-    }
-}`
-                }
-            },
-            'clean_chain': {
-                name: '🔹 שרשרת 3 רמות: A ➔ B ➔ C (פולימורפיזם, בנאים ו-Show)',
-                files: {
-                    'Program.cs': `class Program
+            'csharp': {
+                'clean_chain': {
+                    name: '🔹 שרשרת 3 רמות: A ➔ B ➔ C (פולימורפיזם, בנאים ו-Show)',
+                    files: {
+                        'Program.cs': `class Program
 {
     static void Main()
     {
@@ -50,7 +41,7 @@ class OOPVisualizerApp {
         ((C)obj).Show();
     }
 }`,
-                    'A.cs': `public class A
+                        'A.cs': `public class A
 {
     protected int x;
 
@@ -64,7 +55,7 @@ class OOPVisualizerApp {
         Console.WriteLine($"A: x = {x}");
     }
 }`,
-                    'B.cs': `public class B : A
+                        'B.cs': `public class B : A
 {
     protected int y;
 
@@ -78,7 +69,7 @@ class OOPVisualizerApp {
         Console.WriteLine($"B: x = {x}, y = {y}");
     }
 }`,
-                    'C.cs': `public class C : B
+                        'C.cs': `public class C : B
 {
     private int z;
 
@@ -92,12 +83,24 @@ class OOPVisualizerApp {
         Console.WriteLine($"C: x = {x}, y = {y}, z = {z}");
     }
 }`
-                }
-            },
-            'basic_chain': {
-                name: 'שרשרת 3 רמות בסיסית (A ➔ B ➔ C)',
-                files: {
-                    'Program.cs': `class Program
+                    }
+                },
+                'clean': {
+                    name: '✨ פרויקט C# נקי (רק Program.Main ריק)',
+                    files: {
+                        'Program.cs': `class Program
+{
+    static void Main()
+    {
+        
+    }
+}`
+                    }
+                },
+                'basic_chain': {
+                    name: '📜 שרשרת מורחבת: A ➔ B ➔ C (מחרוזות ובנאים)',
+                    files: {
+                        'Program.cs': `class Program
 {
     static void Main()
     {
@@ -111,7 +114,7 @@ class OOPVisualizerApp {
         Console.WriteLine(obj.ToString());
     }
 }`,
-                    'A.cs': `public class A
+                        'A.cs': `public class A
 {
     protected string name;
 
@@ -131,7 +134,7 @@ class OOPVisualizerApp {
         return $"[A: name={name}]";
     }
 }`,
-                    'B.cs': `public class B : A
+                        'B.cs': `public class B : A
 {
     protected int level;
 
@@ -151,53 +154,53 @@ class OOPVisualizerApp {
         return $"[B: level={level}, base={base.ToString()}]";
     }
 }`,
-                    'C.cs': `public class C : B
+                        'C.cs': `public class C : B
 {
-    private bool isActive;
+    private bool isSpecial;
 
-    public C(string name, int level, bool isActive) : base(name, level)
+    public C(string name, int level, bool isSpecial) : base(name, level)
     {
-        this.isActive = isActive;
-        Console.WriteLine("בנאי מחלקה נגזרת C הופעל");
+        this.isSpecial = isSpecial;
+        Console.WriteLine("בנאי מחלקה נגזרת עליונה C הופעל");
     }
 
     public override void Speak()
     {
-        Console.WriteLine($"C אומר: {name} פעיל={isActive}, רמה={level}!");
+        Console.WriteLine($"C מסיים: מיוחד={isSpecial}, שייך ל-{name}");
     }
 
     public override string ToString()
     {
-        return $"[C: active={isActive}, base={base.ToString()}]";
+        return $"[C: special={isSpecial}, base={base.ToString()}]";
     }
 }`
-                }
-            },
-            'employee_hierarchy': {
-                name: 'היררכיית עובדים (EmployeeHierarchy — מערך הטרוגני)',
-                files: {
-                    'Program.cs': `class Program
+                    }
+                },
+                'employee_hierarchy': {
+                    name: '💼 היררכיית עובדים: Employee ➔ Manager / Developer (מערך הטרוגני)',
+                    files: {
+                        'Program.cs': `class Program
 {
     static void Main()
     {
-        Console.WriteLine("--- יצירת מערך הטרוגני של עובדים ---");
+        Console.WriteLine("--- הדגמת פולימורפיזם ומערך הטרוגני ---");
+
         Employee[] team = new Employee[2];
-        team[0] = new Manager("101", "יוסי", 15000, 3000, 5);
-        team[1] = new Developer("102", "מאיה", 18000, 20, 150);
+        team[0] = new Manager("111", "מאיה", 15000, 5000, 8);
+        team[1] = new Developer("222", "דניאל", 14000, 25, 200);
 
         double totalPayroll = 0;
         for (int i = 0; i < team.Length; i++)
         {
-            Employee emp = team[i];
-            Console.WriteLine(emp.GetDetails());
-            double pay = emp.CalculateSalary();
-            Console.WriteLine($"שכר לתשלום: {pay}");
-            totalPayroll += pay;
+            Console.WriteLine(team[i].GetDetails());
+            double salary = team[i].CalculateSalary();
+            totalPayroll += salary;
         }
-        Console.WriteLine($"סה\"כ שכר לחברה: {totalPayroll}");
+
+        Console.WriteLine($"סה\\"כ לתשלום שכר צוות: {totalPayroll} ש\\"ח");
     }
 }`,
-                    'Employee.cs': `public class Employee
+                        'Employee.cs': `public class Employee
 {
     protected string id;
     protected string name;
@@ -212,15 +215,15 @@ class OOPVisualizerApp {
 
     public virtual double CalculateSalary()
     {
-        return this.baseSalary;
+        return baseSalary;
     }
 
     public virtual string GetDetails()
     {
-        return $"עובד: {name} (ת\"ז: {id}), שכר יסוד: {baseSalary}";
+        return $"עובד: {name} (ת.ז {id})";
     }
 }`,
-                    'Manager.cs': `public class Manager : Employee
+                        'Manager.cs': `public class Manager : Employee
 {
     private double bonus;
     private int teamSize;
@@ -234,15 +237,15 @@ class OOPVisualizerApp {
 
     public override double CalculateSalary()
     {
-        return base.CalculateSalary() + this.bonus;
+        return base.CalculateSalary() + bonus;
     }
 
     public override string GetDetails()
     {
-        return $"מנהל: {name}, גודל צוות: {teamSize}, בונוס: {bonus}";
+        return $"מנהל: {name}, צוות של {teamSize} עובדים, בונוס: {bonus}";
     }
 }`,
-                    'Developer.cs': `public class Developer : Employee
+                        'Developer.cs': `public class Developer : Employee
 {
     private int overtimeHours;
     private double hourlyOvertimeRate;
@@ -264,26 +267,269 @@ class OOPVisualizerApp {
         return $"מפתח: {name}, שעות נוספות: {overtimeHours} (תעריף: {hourlyOvertimeRate})";
     }
 }`
+                    }
                 }
             },
-            'empty_starter': {
-                name: '📄 פרויקט ריק להתחלה מאפס (Blank Canvas)',
-                files: {
-                    'Program.cs': `class Program
+            'java': {
+                'clean_chain': {
+                    name: '🔹 שרשרת 3 רמות ב-Java: A ➔ B ➔ C (פולימורפיזם, super ו-show)',
+                    files: {
+                        'Main.java': `public class Main
 {
-    static void Main()
+    public static void main(String[] args)
     {
-        // התחל לכתוב את הקוד שלך כאן...
-        MyClass obj = new MyClass();
+        // 1. פולימורפיזם: משתנה מטיפוס בסיס A מצביע על אובייקט נגזר C בערימה
+        A obj = new C(10, 20, 30);
+
+        // 2. הפעלת פעולה פולימורפית דרוסה (Dynamic Dispatch)
+        obj.show();
+
+        // 3. המרת טיפוס מפורשת (Downcasting) וזימון פעולה
+        ((C)obj).show();
     }
 }`,
-                    'MyClass.cs': `public class MyClass
+                        'A.java': `public class A
 {
-    public MyClass()
+    protected int x;
+
+    public A(int x)
+    {
+        this.x = x;
+    }
+
+    public void show()
+    {
+        System.out.println("A: x = " + x);
+    }
+}`,
+                        'B.java': `public class B extends A
+{
+    protected int y;
+
+    public B(int x, int y)
+    {
+        super(x);
+        this.y = y;
+    }
+
+    @Override
+    public void show()
+    {
+        System.out.println("B: x = " + x + ", y = " + y);
+    }
+}`,
+                        'C.java': `public class C extends B
+{
+    private int z;
+
+    public C(int x, int y, int z)
+    {
+        super(x, y);
+        this.z = z;
+    }
+
+    @Override
+    public void show()
+    {
+        System.out.println("C: x = " + x + ", y = " + y + ", z = " + z);
+    }
+}`
+                    }
+                },
+                'clean': {
+                    name: '✨ פרויקט Java נקי (רק Main.main ריק)',
+                    files: {
+                        'Main.java': `public class Main
+{
+    public static void main(String[] args)
     {
         
     }
 }`
+                    }
+                },
+                'basic_chain': {
+                    name: '📜 שרשרת מורחבת ב-Java: A ➔ B ➔ C (מחרוזות ו-toString)',
+                    files: {
+                        'Main.java': `public class Main
+{
+    public static void main(String[] args)
+    {
+        System.out.println("--- 1. יצירת אובייקט C ושירשור בנאים ב-Java ---");
+        A obj = new C("אלון", 100, true);
+
+        System.out.println("--- 2. הפעלת פעולה פולימורפית speak() ---");
+        obj.speak();
+
+        System.out.println("--- 3. בדיקת תיאור toString() ---");
+        System.out.println(obj.toString());
+    }
+}`,
+                        'A.java': `public class A
+{
+    protected String name;
+
+    public A(String name)
+    {
+        this.name = name;
+        System.out.println("בנאי מחלקת בסיס A הופעל");
+    }
+
+    public void speak()
+    {
+        System.out.println("A אומר: שלום " + name);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "[A: name=" + name + "]";
+    }
+}`,
+                        'B.java': `public class B extends A
+{
+    protected int level;
+
+    public B(String name, int level)
+    {
+        super(name);
+        this.level = level;
+        System.out.println("בנאי מחלקת ביניים B הופעל");
+    }
+
+    @Override
+    public void speak()
+    {
+        System.out.println("B אומר: רמה " + level + " עבור " + name);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "[B: level=" + level + ", base=" + super.toString() + "]";
+    }
+}`,
+                        'C.java': `public class C extends B
+{
+    private boolean isSpecial;
+
+    public C(String name, int level, boolean isSpecial)
+    {
+        super(name, level);
+        this.isSpecial = isSpecial;
+        System.out.println("בנאי מחלקה נגזרת עליונה C הופעל");
+    }
+
+    @Override
+    public void speak()
+    {
+        System.out.println("C מסיים: מיוחד=" + isSpecial + ", שייך ל-" + name);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "[C: special=" + isSpecial + ", base=" + super.toString() + "]";
+    }
+}`
+                    }
+                },
+                'employee_hierarchy': {
+                    name: '💼 היררכיית עובדים ב-Java: Employee ➔ Manager / Developer',
+                    files: {
+                        'Main.java': `public class Main
+{
+    public static void main(String[] args)
+    {
+        System.out.println("--- הדגמת פולימורפיזם ומערך הטרוגני ב-Java ---");
+
+        Employee[] team = new Employee[2];
+        team[0] = new Manager("111", "מאיה", 15000, 5000, 8);
+        team[1] = new Developer("222", "דניאל", 14000, 25, 200);
+
+        double totalPayroll = 0;
+        for (int i = 0; i < team.length; i++)
+        {
+            System.out.println(team[i].getDetails());
+            double salary = team[i].calculateSalary();
+            totalPayroll += salary;
+        }
+
+        System.out.println("סה\\"כ לתשלום שכר צוות: " + totalPayroll + " ש\\"ח");
+    }
+}`,
+                        'Employee.java': `public class Employee
+{
+    protected String id;
+    protected String name;
+    protected double baseSalary;
+
+    public Employee(String id, String name, double baseSalary)
+    {
+        this.id = id;
+        this.name = name;
+        this.baseSalary = baseSalary;
+    }
+
+    public double calculateSalary()
+    {
+        return baseSalary;
+    }
+
+    public String getDetails()
+    {
+        return "עובד: " + name + " (ת.ז " + id + ")";
+    }
+}`,
+                        'Manager.java': `public class Manager extends Employee
+{
+    private double bonus;
+    private int teamSize;
+
+    public Manager(String id, String name, double baseSalary, double bonus, int teamSize)
+    {
+        super(id, name, baseSalary);
+        this.bonus = bonus;
+        this.teamSize = teamSize;
+    }
+
+    @Override
+    public double calculateSalary()
+    {
+        return super.calculateSalary() + bonus;
+    }
+
+    @Override
+    public String getDetails()
+    {
+        return "מנהל: " + name + ", צוות של " + teamSize + " עובדים, בונוס: " + bonus;
+    }
+}`,
+                        'Developer.java': `public class Developer extends Employee
+{
+    private int overtimeHours;
+    private double hourlyOvertimeRate;
+
+    public Developer(String id, String name, double baseSalary, int overtimeHours, double rate)
+    {
+        super(id, name, baseSalary);
+        this.overtimeHours = overtimeHours;
+        this.hourlyOvertimeRate = rate;
+    }
+
+    @Override
+    public double calculateSalary()
+    {
+        return super.calculateSalary() + (this.overtimeHours * this.hourlyOvertimeRate);
+    }
+
+    @Override
+    public String getDetails()
+    {
+        return "מפתח: " + name + ", שעות נוספות: " + overtimeHours + " (תעריף: " + hourlyOvertimeRate + ")";
+    }
+}`
+                    }
                 }
             }
         };
@@ -295,6 +541,11 @@ class OOPVisualizerApp {
             splitter: document.getElementById('layout-splitter-horizontal'),
             mainContainer: document.querySelector('.main-container'),
             
+            // Language selector & titles
+            langBtnCsharp: document.getElementById('lang-btn-csharp'),
+            langBtnJava: document.getElementById('lang-btn-java'),
+            editorTitle: document.getElementById('editor-title'),
+
             // Buttons & Controls
             btnPlay: document.getElementById('btn-play'),
             btnStepPrev: document.getElementById('btn-step-prev'),
@@ -354,10 +605,21 @@ class OOPVisualizerApp {
                     this.recompile();
                 }
             );
+            if (this.currentLanguage) {
+                this.autocomplete.setLanguage(this.currentLanguage);
+            }
         }
     }
 
     attachEvents() {
+        // בורר שפות: C# || Java
+        if (this.dom.langBtnCsharp) {
+            this.dom.langBtnCsharp.addEventListener('click', () => this.switchLanguage('csharp'));
+        }
+        if (this.dom.langBtnJava) {
+            this.dom.langBtnJava.addEventListener('click', () => this.switchLanguage('java'));
+        }
+
         // בקרת הרצה
         this.dom.btnPlay.addEventListener('click', () => this.togglePlay());
         this.dom.btnStepNext.addEventListener('click', () => this.stepNext());
@@ -420,6 +682,42 @@ class OOPVisualizerApp {
         this.dom.stackList.addEventListener('scroll', () => this.drawReferenceArrows());
     }
 
+    switchLanguage(lang) {
+        if (this.currentLanguage === lang) return;
+        this.currentLanguage = lang;
+        localStorage.setItem('oop_visualizer_lang', lang);
+        this.applyLanguageUI(lang);
+        this.loadPreset('clean_chain');
+    }
+
+    applyLanguageUI(lang) {
+        if (this.dom.langBtnCsharp) this.dom.langBtnCsharp.classList.toggle('active', lang === 'csharp');
+        if (this.dom.langBtnJava) this.dom.langBtnJava.classList.toggle('active', lang === 'java');
+        if (this.dom.editorTitle) {
+            this.dom.editorTitle.textContent = lang === 'java' ? '💻 עורך קוד ומחלקות (Java)' : '💻 עורך קוד ומחלקות (C#)';
+        }
+        if (this.autocomplete) {
+            this.autocomplete.setLanguage(lang);
+        }
+
+        // ריענון רשימת התבניות בתיבת הבחירה (Dropdown)
+        if (this.dom.exampleSelect) {
+            this.dom.exampleSelect.innerHTML = '';
+            const currentPresets = this.presets[lang] || {};
+            for (const [key, presetObj] of Object.entries(currentPresets)) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = presetObj.name;
+                if (key === 'clean_chain') opt.selected = true;
+                this.dom.exampleSelect.appendChild(opt);
+            }
+        }
+    }
+
+    getEntryFilename() {
+        return this.currentLanguage === 'java' ? 'Main.java' : 'Program.cs';
+    }
+
     setupSplitter() {
         let isDragging = false;
         this.dom.splitter.addEventListener('mousedown', (e) => {
@@ -453,23 +751,26 @@ class OOPVisualizerApp {
     }
 
     loadPreset(key) {
-        const preset = this.presets[key];
+        const langPresets = this.presets[this.currentLanguage] || this.presets['csharp'];
+        const preset = langPresets[key] || Object.values(langPresets)[0];
         if (!preset) return;
 
         this.pause();
         this.files = JSON.parse(JSON.stringify(preset.files));
-        this.activeFilename = 'Program.cs';
+        const entryFile = this.getEntryFilename();
+        this.activeFilename = this.files[entryFile] ? entryFile : Object.keys(this.files)[0];
         this.renderFileTabs();
         this.loadActiveFileContent();
         this.recompile();
     }
 
     promptNewClass() {
-        const name = prompt("הזן את שם המחלקה החדשה (לדוגמה: Student או Shape):", "MyClass");
+        const ext = this.currentLanguage === 'java' ? '.java' : '.cs';
+        const name = prompt(`הזן את שם המחלקה החדשה (לדוגמה: Student או Shape):`, "MyClass");
         if (!name || !name.trim()) return;
 
         const cleanName = name.trim().replace(/[^A-Za-z0-9_]/g, '');
-        const filename = `${cleanName}.cs`;
+        const filename = `${cleanName}${ext}`;
 
         if (this.files[filename]) {
             alert(`קובץ בשם ${filename} כבר קיים.`);
@@ -485,6 +786,8 @@ class OOPVisualizerApp {
 
     renderFileTabs() {
         this.dom.editorTabsList.innerHTML = '';
+        const entryFile = this.getEntryFilename();
+
         for (const filename of Object.keys(this.files)) {
             const tab = document.createElement('div');
             tab.className = `file-tab ${filename === this.activeFilename ? 'active' : ''}`;
@@ -493,8 +796,8 @@ class OOPVisualizerApp {
             titleSpan.textContent = filename;
             tab.appendChild(titleSpan);
 
-            // כפתור מחיקה (פרט ל-Program.cs)
-            if (filename !== 'Program.cs') {
+            // כפתור מחיקה (פרט לקובץ הכניסה הראשי)
+            if (filename !== entryFile && filename !== 'Program.cs' && filename !== 'Main.java') {
                 const closeBtn = document.createElement('span');
                 closeBtn.className = 'file-tab-close';
                 closeBtn.textContent = '✕';
@@ -504,7 +807,7 @@ class OOPVisualizerApp {
                     if (confirm(`האם למחוק את הקובץ ${filename}?`)) {
                         delete this.files[filename];
                         if (this.activeFilename === filename) {
-                            this.activeFilename = 'Program.cs';
+                            this.activeFilename = this.files[entryFile] ? entryFile : Object.keys(this.files)[0];
                         }
                         this.renderFileTabs();
                         this.loadActiveFileContent();

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>סטודיו ומאייר תכנות מונחה עצמים והורשה ב-C# | אלון שרייבמן</title>
-    <link rel="stylesheet" href="css/style.css?v=1.0">
+    <title>סטודיו ומאייר תכנות מונחה עצמים והורשה — C# || Java | אלון שרייבמן</title>
+    <link rel="stylesheet" href="css/style.css?v=1.1">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
 </head>
 <body>
@@ -15,12 +15,24 @@
             <div class="brand-title">
                 <div class="brand-icon">🏛️</div>
                 <div>
-                    <h1>סטודיו תכנות מונחה עצמים והורשה ב-C# (OOP & Inheritance Studio)</h1>
+                    <h1>סטודיו תכנות מונחה עצמים והורשה — C# || Java (OOP Studio)</h1>
                     <p>מרכז מדעי המחשב — אלון שרייבמן | תיכון מקיף דוד טוביהו (י"ב - יחידה 4)</p>
                 </div>
             </div>
 
             <div class="header-actions">
+                <!-- בורר שפות מעוצב: C# || Java -->
+                <div class="lang-selector-group" id="lang-selector-group" title="בחר שפת תכנות">
+                    <button type="button" class="lang-btn active" id="lang-btn-csharp" data-lang="csharp">
+                        <span class="lang-icon">🔷</span>
+                        <span>C#</span>
+                    </button>
+                    <button type="button" class="lang-btn" id="lang-btn-java" data-lang="java">
+                        <span class="lang-icon">☕</span>
+                        <span>Java</span>
+                    </button>
+                </div>
+
                 <span class="badge-header">מודל "בובות רוסיות" [C [B [A]]]</span>
                 <span class="badge-header">Dynamic Dispatch &amp; Polymorphism</span>
                 <a href="../../2_queue/visualizer/index.html" class="btn btn-secondary" style="text-decoration: none; font-size: 0.75rem;" title="מעבר לסטודיו מבני נתונים (תור, מחסנית, חוליה, עץ)">🔄 לסטודיו מבני נתונים</a>
@@ -169,7 +181,7 @@
             <!-- 2. עורך קוד C# מרובה קבצים ולשוניות מחלקות -->
             <section class="card editor-panel">
                 <div class="card-header">
-                    <span>💻 עורך קוד C# ומחלקות</span>
+                    <span id="editor-title">💻 עורך קוד ומחלקות (C#)</span>
                     <div class="card-header-actions">
                         <select id="example-code-select" class="example-select" title="טען תבנית מוכנה">
                             <option value="clean_chain" selected>🔹 שרשרת 3 רמות: A ➔ B ➔ C (פולימורפיזם, בנאים ו-Show)</option>

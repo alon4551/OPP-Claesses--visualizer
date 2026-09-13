@@ -14,19 +14,18 @@ class AutocompleteEngine {
         this.suggestions = [];
         this.isOpen = false;
 
-        this.initKeywords();
+        this.currentLang = 'csharp';
+        this.initKeywords(this.currentLang);
         this.attachEvents();
     }
 
-    initKeywords() {
-        this.items = [
-            {
-                label: 'base',
-                insert: 'base',
-                kind: 'keyword',
-                detail: 'קריאה למחלקת הבסיס (Base)',
-                doc: 'פנייה לאלמנטים במחלקת האב: שרשור פעולה בונה base(args) או זימון פעולה base.Method(). כלל בגרות: שרשור בנאי חייב להתבצע ראשון בכותרת הפעולה הבונה.'
-            },
+    setLanguage(lang) {
+        this.currentLang = lang || 'csharp';
+        this.initKeywords(this.currentLang);
+    }
+
+    initKeywords(lang = 'csharp') {
+        const commonItems = [
             {
                 label: 'this',
                 insert: 'this.',
@@ -35,25 +34,11 @@ class AutocompleteEngine {
                 doc: 'פנייה לשדות או פעולות של האובייקט הנוכחי. שימושי להבחנה בין שדה מחלקה לפרמטר בנאי (this.name = name;).'
             },
             {
-                label: 'override',
-                insert: 'override ',
-                kind: 'keyword',
-                detail: 'דריסת פעולה פולימורפית',
-                doc: 'מציין מימוש מחדש במחלקה נגזרת לפעולה שהוגדרה כ-virtual במחלקת האב. מאפשר הכרעה דינמית בזמן ריצה (Dynamic Dispatch).'
-            },
-            {
-                label: 'virtual',
-                insert: 'virtual ',
-                kind: 'keyword',
-                detail: 'פעולה הניתנת לדריסה',
-                doc: 'מגדיר פעולה במחלקת הבסיס שניתן לדרוס אותה במחלקה נגזרת ע"י override. אם המחלקה הנגזרת לא תדרוס, יופעל מימוש ברירת המחדל.'
-            },
-            {
                 label: 'protected',
                 insert: 'protected ',
                 kind: 'keyword',
                 detail: 'רמת כימוס מוגנת (ירושה)',
-                doc: 'שדה או פעולה נגישים בתוך המחלקה ובכל המחלקות הנגזרות ממנה, אך מוסתרים לחלוטין מחוץ להיררכיה (private כלפי חוץ, public כלפי פנים).'
+                doc: 'שדה או פעולה נגישים בתוך המחלקה ובכל המחלקות הנגזרות ממנה, אך מוסתרים לחלוטין מחוץ להיררכיה.'
             },
             {
                 label: 'public',
@@ -75,50 +60,180 @@ class AutocompleteEngine {
                 kind: 'snippet',
                 detail: 'תבנית מחלקה חדשה',
                 doc: 'מגדיר טיפוס נתונים חדש הכולל שדות, בנאים ומתודות.'
-            },
-            {
-                label: 'class : base',
-                insert: 'public class ${Derived} : ${Base}\n{\n    public ${Derived}() : base()\n    {\n        \n    }\n}',
-                kind: 'snippet',
-                detail: 'תבנית מחלקה נגזרת עם שרשור בנאי',
-                doc: 'מחלקה נגזרת המרחיבה מחלקת בסיס. מיישמת שרשור בנאי קבוע : base().'
-            },
-            {
-                label: 'ctor',
-                insert: 'public ${ClassName}()\n{\n    \n}',
-                kind: 'snippet',
-                detail: 'פעולה בונה (Constructor)',
-                doc: 'בנאי המאתחל את שדות האובייקט בעת יצירתו ע"י new.'
-            },
-            {
-                label: 'Console.WriteLine',
-                insert: 'Console.WriteLine(${text});',
-                kind: 'method',
-                detail: 'הדפסה למסוף עם ירידת שורה',
-                doc: 'מדפיס ערך או מחרוזת למסוף ופותח שורה חדשה. תומך באינטרפולציה: Console.WriteLine($"x={x}");'
-            },
-            {
-                label: 'ToString',
-                insert: 'public override string ToString()\n{\n    return $"${ClassName}";\n}',
-                kind: 'method',
-                detail: 'דריסת פעולת ToString()',
-                doc: 'דריסת הפעולה המובנית ב-object להצגת ייצוג מחרוזתי קריא של תוכן האובייקט.'
-            },
-            {
-                label: 'is',
-                insert: 'is ',
-                kind: 'keyword',
-                detail: 'בדיקת טיפוס בזמן ריצה',
-                doc: 'בדיקה האם אובייקט הוא מטיפוס מסוים או יורש ממנו: if (emp is Manager).'
-            },
-            {
-                label: 'as',
-                insert: 'as ',
-                kind: 'keyword',
-                detail: 'המרה בטוחה של טיפוס',
-                doc: 'המרה של הפניה לטיפוס נגזר. אם ההמרה נכשלת, מוחזר null ללא קריסת התוכנית.'
             }
         ];
+
+        if (lang === 'java') {
+            this.items = [
+                ...commonItems,
+                {
+                    label: 'extends',
+                    insert: 'extends ',
+                    kind: 'keyword',
+                    detail: 'הורשה ב-Java (הרחבת מחלקה)',
+                    doc: 'מגדיר שמחלקה נגזרת יורשת ממחלקת אב: public class B extends A.'
+                },
+                {
+                    label: 'super',
+                    insert: 'super',
+                    kind: 'keyword',
+                    detail: 'קריאה למחלקת העל (Superclass)',
+                    doc: 'פנייה לאלמנטים במחלקת האב: שרשור פעולה בונה super(args); כשורה ראשונה בבנאי, או זימון פעולת אב super.method().'
+                },
+                {
+                    label: '@Override',
+                    insert: '@Override\n',
+                    kind: 'keyword',
+                    detail: 'אנוטציית דריסת פעולה',
+                    doc: 'מציין במפורש שהפעולה דורסת פעולה בעלת חתימה זהה ממחלקת האב. בג\'אווה כל פעולות המופע הן וירטואליות כברירת מחדל.'
+                },
+                {
+                    label: 'System.out.println',
+                    insert: 'System.out.println(${text});',
+                    kind: 'method',
+                    detail: 'הדפסה למסוף עם ירידת שורה',
+                    doc: 'מדפיס ערך או מחרוזת למסוף ופותח שורה חדשה: System.out.println("x = " + x);'
+                },
+                {
+                    label: 'sout',
+                    insert: 'System.out.println(${text});',
+                    kind: 'snippet',
+                    detail: 'קיצור דרך להדפסה למסוף (sout)',
+                    doc: 'קיצור דרך פופולרי ב-Java (IntelliJ / Eclipse) לפקודת System.out.println.'
+                },
+                {
+                    label: 'class extends Base',
+                    insert: 'public class ${Derived} extends ${Base}\n{\n    public ${Derived}()\n    {\n        super();\n    }\n}',
+                    kind: 'snippet',
+                    detail: 'תבנית מחלקה נגזרת ב-Java עם super()',
+                    doc: 'מחלקה נגזרת ב-Java המרחיבה מחלקת בסיס ומיישמת שרשור בנאי super().'
+                },
+                {
+                    label: 'ctor',
+                    insert: 'public ${ClassName}()\n{\n    super();\n}',
+                    kind: 'snippet',
+                    detail: 'פעולה בונה ב-Java',
+                    doc: 'בנאי המאתחל את שדות האובייקט בעת יצירתו ע"י new.'
+                },
+                {
+                    label: 'main',
+                    insert: 'public static void main(String[] args)\n{\n    \n}',
+                    kind: 'snippet',
+                    detail: 'נקודת כניסה ראשית ב-Java',
+                    doc: 'הפעולה הראשית שמתחילה את ריצת התוכנית בג\'אווה.'
+                },
+                {
+                    label: 'instanceof',
+                    insert: 'instanceof ',
+                    kind: 'keyword',
+                    detail: 'בדיקת טיפוס בזמן ריצה ב-Java',
+                    doc: 'בדיקה האם אובייקט הוא מופע של מחלקה או יורש ממנה: if (obj instanceof Manager).'
+                },
+                {
+                    label: 'toString',
+                    insert: '@Override\npublic String toString()\n{\n    return "${ClassName}";\n}',
+                    kind: 'method',
+                    detail: 'דריסת פעולת toString() ב-Java',
+                    doc: 'דריסת הפעולה המובנית ב-Object להצגת ייצוג מחרוזתי קריא של תוכן האובייקט.'
+                },
+                {
+                    label: 'boolean',
+                    insert: 'boolean ',
+                    kind: 'keyword',
+                    detail: 'טיפוס בוליאני ב-Java (true/false)',
+                    doc: 'טיפוס פרימיטיבי ב-Java לערכי אמת/שקר. ברירת המחדל היא false.'
+                },
+                {
+                    label: 'String',
+                    insert: 'String ',
+                    kind: 'keyword',
+                    detail: 'טיפוס מחרוזת ב-Java',
+                    doc: 'מחלקת מחרוזת מובנית בג\'אווה.'
+                }
+            ];
+        } else {
+            // C#
+            this.items = [
+                ...commonItems,
+                {
+                    label: 'base',
+                    insert: 'base',
+                    kind: 'keyword',
+                    detail: 'קריאה למחלקת הבסיס (Base)',
+                    doc: 'פנייה לאלמנטים במחלקת האב: שרשור פעולה בונה base(args) או זימון פעולה base.Method(). כלל בגרות: שרשור בנאי חייב להתבצע ראשון בכותרת הפעולה הבונה.'
+                },
+                {
+                    label: 'override',
+                    insert: 'override ',
+                    kind: 'keyword',
+                    detail: 'דריסת פעולה פולימורפית',
+                    doc: 'מציין מימוש מחדש במחלקה נגזרת לפעולה שהוגדרה כ-virtual במחלקת האב. מאפשר הכרעה דינמית בזמן ריצה (Dynamic Dispatch).'
+                },
+                {
+                    label: 'virtual',
+                    insert: 'virtual ',
+                    kind: 'keyword',
+                    detail: 'פעולה הניתנת לדריסה',
+                    doc: 'מגדיר פעולה במחלקת הבסיס שניתן לדרוס אותה במחלקה נגזרת ע"י override. אם המחלקה הנגזרת לא תדרוס, יופעל מימוש ברירת המחדל.'
+                },
+                {
+                    label: 'class : base',
+                    insert: 'public class ${Derived} : ${Base}\n{\n    public ${Derived}() : base()\n    {\n        \n    }\n}',
+                    kind: 'snippet',
+                    detail: 'תבנית מחלקה נגזרת עם שרשור בנאי',
+                    doc: 'מחלקה נגזרת המרחיבה מחלקת בסיס. מיישמת שרשור בנאי קבוע : base().'
+                },
+                {
+                    label: 'ctor',
+                    insert: 'public ${ClassName}()\n{\n    \n}',
+                    kind: 'snippet',
+                    detail: 'פעולה בונה (Constructor)',
+                    doc: 'בנאי המאתחל את שדות האובייקט בעת יצירתו ע"י new.'
+                },
+                {
+                    label: 'Console.WriteLine',
+                    insert: 'Console.WriteLine(${text});',
+                    kind: 'method',
+                    detail: 'הדפסה למסוף עם ירידת שורה',
+                    doc: 'מדפיס ערך או מחרוזת למסוף ופותח שורה חדשה. תומך באינטרפולציה: Console.WriteLine($"x={x}");'
+                },
+                {
+                    label: 'ToString',
+                    insert: 'public override string ToString()\n{\n    return $"${ClassName}";\n}',
+                    kind: 'method',
+                    detail: 'דריסת פעולת ToString()',
+                    doc: 'דריסת הפעולה המובנית ב-object להצגת ייצוג מחרוזתי קריא של תוכן האובייקט.'
+                },
+                {
+                    label: 'is',
+                    insert: 'is ',
+                    kind: 'keyword',
+                    detail: 'בדיקת טיפוס בזמן ריצה',
+                    doc: 'בדיקה האם אובייקט הוא מטיפוס מסוים או יורש ממנו: if (emp is Manager).'
+                },
+                {
+                    label: 'as',
+                    insert: 'as ',
+                    kind: 'keyword',
+                    detail: 'המרה בטוחה של טיפוס',
+                    doc: 'המרה של הפניה לטיפוס נגזר. אם ההמרה נכשלת, מוחזר null ללא קריסת התוכנית.'
+                },
+                {
+                    label: 'bool',
+                    insert: 'bool ',
+                    kind: 'keyword',
+                    detail: 'טיפוס בוליאני ב-C# (true/false)',
+                    doc: 'טיפוס פרימיטיבי ב-C# לערכי אמת/שקר.'
+                },
+                {
+                    label: 'string',
+                    insert: 'string ',
+                    kind: 'keyword',
+                    detail: 'טיפוס מחרוזת ב-C#',
+                    doc: 'מחרוזת טקסטואלית ב-C#.'
+                }
+            ];
+        }
     }
 
     attachEvents() {
