@@ -67,7 +67,12 @@ class CSharpOOPInterpreter {
                     hierarchy: [className] // יושלם ב-resolveInheritance
                 };
                 this.classes[className] = currentClass;
-                classStartDepth = braceDepth;
+                // ספירת סוגריים בשורת הגדרת המחלקה עצמה (למשל: public class Animal {)
+                // כדי ש-classStartDepth יוגדר נכון גם כשה-{ נמצא בשורה עצמה
+                const classLineOpen = (trimmed.match(/{/g) || []).length;
+                const classLineClose = (trimmed.match(/}/g) || []).length;
+                braceDepth += classLineOpen - classLineClose;
+                classStartDepth = braceDepth - 1; // רמה אחת פחות מרמת המחלקה הפתוחה
                 continue;
             }
 
