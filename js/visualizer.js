@@ -720,33 +720,83 @@ class OOPVisualizerApp {
 
     setupSplitter() {
         let isDragging = false;
-        this.dom.splitter.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            this.dom.splitter.classList.add('dragging');
-            document.body.style.cursor = 'col-resize';
-        });
+        const splitter = this.dom.splitter;
+        const container = this.dom.mainContainer;
+        if (!splitter || !container) return;
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const containerRect = this.dom.mainContainer.getBoundingClientRect();
-            // חישוב מבוסס RTL: צד ימין הוא הבמה
-            const offsetRight = containerRect.right - e.clientX;
-            const totalWidth = containerRect.width;
-            const visualWidth = Math.max(350, Math.min(totalWidth - 350, offsetRight));
-            const editorWidth = totalWidth - visualWidth - 10;
-
-            this.dom.mainContainer.style.setProperty('--visual-panel-width', `${visualWidth}px`);
-            this.dom.mainContainer.style.setProperty('--editor-column-width', `${editorWidth}px`);
-            this.drawReferenceArrows();
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                this.dom.splitter.classList.remove('dragging');
-                document.body.style.cursor = '';
-                this.drawReferenceArrows();
+        const savedWidth = localStorage.getItem('oop_viz_split_width');
+        if (savedWidth) {
+            const w = parseFloat(savedWidth);
+            if (!isNaN(w) && w >= 25 && w <= 75) {
+                container.style.setProperty('--visual-panel-width', `${w}%`);
+                container.style.setProperty('--editor-column-width', `${100 - w}%`);
             }
+        }
+
+        const onPointerMove = (e) => {
+            if (!isDragging) return;
+            if (e.buttons === 0) {
+                onPointerUp(e);
+                return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            const totalWidth = container.clientWidth;
+            if (totalWidth <= 0) return;
+
+            // In RTL, visual panel is on the right
+            const offsetRight = containerRect.right - e.clientX;
+            const minVisual = 320;
+            const minEditor = 280;
+            const maxVisual = Math.max(minVisual + 40, totalWidth - minEditor - 20);
+            const clamped = Math.max(minVisual, Math.min(maxVisual, offsetRight));
+
+            const visualPercent = (clamped / totalWidth) * 100;
+            const editorPercent = 100 - visualPercent;
+
+            container.style.setProperty('--visual-panel-width', `${visualPercent.toFixed(2)}%`);
+            container.style.setProperty('--editor-column-width', `${editorPercent.toFixed(2)}%`);
+            try {
+                localStorage.setItem('oop_viz_split_width', visualPercent.toFixed(2));
+            } catch (err) {}
+            this.drawReferenceArrows();
+        };
+
+        const onPointerUp = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            splitter.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (e && e.pointerId != null) {
+                try { splitter.releasePointerCapture(e.pointerId); } catch (_) {}
+            }
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            this.drawReferenceArrows();
+        };
+
+        splitter.addEventListener('pointerdown', (e) => {
+            if (e.button && e.button !== 0) return;
+            isDragging = true;
+            splitter.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            try { splitter.setPointerCapture(e.pointerId); } catch (_) {}
+
+            window.addEventListener('pointermove', onPointerMove, { passive: false });
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointercancel', onPointerUp);
+            e.preventDefault();
+        });
+
+        splitter.addEventListener('dblclick', () => {
+            container.style.setProperty('--visual-panel-width', '58%');
+            container.style.setProperty('--editor-column-width', '42%');
+            try {
+                localStorage.setItem('oop_viz_split_width', '58');
+            } catch (err) {}
+            this.drawReferenceArrows();
         });
     }
 

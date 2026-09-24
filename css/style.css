@@ -212,8 +212,8 @@ body {
 /* פריסת תוכן ראשית - חלוקה ל-2 עמודות עם Splitter */
 .main-container {
     max-width: 1800px;
-    margin: 0.5rem auto;
-    padding: 0 1rem;
+    margin: 0.35rem auto;
+    padding: 0 0.85rem 0.5rem;
     display: grid;
     grid-template-columns: var(--visual-panel-width, 1.4fr) 8px var(--editor-column-width, 1fr);
     gap: 0.45rem;
@@ -280,6 +280,9 @@ body {
     flex-direction: column;
     gap: 0.45rem;
     min-height: 0;
+    margin: 0.2rem 0.25rem 0.35rem 0.25rem;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .memory-stage-card {
@@ -788,6 +791,7 @@ body {
     flex-direction: column;
     gap: 0.45rem;
     min-height: 0;
+    margin: 0.2rem 0.25rem 0.35rem 0.25rem;
 }
 
 .controls-card {
@@ -795,7 +799,7 @@ body {
 }
 
 .controls-bar-body {
-    padding: 0.45rem 0.75rem;
+    padding: 0.55rem 0.85rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -863,6 +867,10 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    overflow: hidden;
 }
 
 .example-select {
@@ -877,7 +885,7 @@ body {
 
 .editor-tabs-bar {
     background: #e2e8f0;
-    padding: 0.25rem 0.5rem 0 0.5rem;
+    padding: 0.35rem 0.75rem 0 0.75rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -953,7 +961,7 @@ body {
 
 .line-numbers {
     width: 44px;
-    padding: 0.75rem 0.25rem;
+    padding: 1rem 0.25rem;
     background: #181825;
     color: #585b70;
     font-family: 'Consolas', 'Courier New', monospace;
@@ -993,7 +1001,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    padding: 0.75rem 0.85rem;
+    padding: 1rem 1.15rem;
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 14px;
     line-height: 22px;
