@@ -212,8 +212,8 @@ body {
 /* פריסת תוכן ראשית - חלוקה ל-2 עמודות עם Splitter */
 .main-container {
     max-width: 1800px;
-    margin: 0.4rem auto;
-    padding: 0 0.85rem;
+    margin: 0.5rem auto;
+    padding: 0 1rem;
     display: grid;
     grid-template-columns: var(--visual-panel-width, 1.4fr) 8px var(--editor-column-width, 1fr);
     gap: 0.45rem;
