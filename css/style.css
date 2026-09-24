@@ -789,242 +789,267 @@ body {
 .editor-column {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    height: 100%;
     min-height: 0;
-    margin: 0.2rem 0.25rem 0.35rem 0.25rem;
+    overflow: hidden;
+    margin: 0.25rem 0.35rem 0.25rem 0.4rem;
 }
 
-.controls-card {
-    flex-shrink: 0;
-}
-
-.controls-bar-body {
-    padding: 0.55rem 0.85rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.control-btn-group {
-    display: flex;
-    gap: 0.35rem;
-}
-
-.btn {
-    padding: 0.35rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.btn-primary { background: var(--primary); color: #ffffff; }
-.btn-primary:hover { background: var(--primary-hover); }
-
-.btn-secondary { background: #e2e8f0; color: #1e293b; }
-.btn-secondary:hover { background: #cbd5e1; }
-
-.btn-success { background: var(--success); color: #ffffff; }
-.btn-success:hover { background: #059669; }
-
-.btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-.btn-danger:hover { background: #fecaca; }
-
-.speed-control {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.speed-slider {
-    width: 80px;
-    accent-color: var(--primary);
-    cursor: pointer;
-}
-
-.step-info {
-    font-family: 'Consolas', monospace;
-    font-size: 0.8rem;
-    background: #e2e8f0;
-    padding: 0.15rem 0.5rem;
-    border-radius: 12px;
-    color: #334155;
-    font-weight: bold;
-}
-
-/* פאנל עורך הקוד C# */
+/* פאנל עורך קוד C# אחוד - ממשק IDE מודרני (Catppuccin Mocha) */
 .editor-panel {
-    flex: 1;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    height: 100%;
     min-height: 0;
+    resize: none !important;
+    overflow: hidden;
+    margin: 0;
     border-radius: 12px;
     border: 1px solid var(--border);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
-    overflow: hidden;
+    background: #181825;
 }
 
-.example-select {
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    border: 1px solid var(--border-dark);
-    font-size: 0.78rem;
-    background: #ffffff;
-    color: var(--text-main);
-    cursor: pointer;
-}
-
+/* סרגל לשוניות קבצים ומחלקות בעורך הקוד (Editor Tabs Bar) */
 .editor-tabs-bar {
-    background: #e2e8f0;
-    padding: 0.35rem 0.75rem 0 0.75rem;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--border-dark);
+    justify-content: space-between;
+    background: #1e1e2e;
+    border-bottom: 1px solid #313244;
+    padding: 0.35rem 0.75rem 0 0.75rem;
+    min-height: 40px;
+    user-select: none;
+    direction: ltr;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.editor-tabs-bar::-webkit-scrollbar {
+    display: none;
 }
 
 .editor-tabs-list {
     display: flex;
-    gap: 0.25rem;
+    align-items: stretch;
+    height: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
+    gap: 4px;
+    scrollbar-width: none;
+}
+
+.editor-tabs-list::-webkit-scrollbar {
+    display: none;
 }
 
 .file-tab {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.3rem 0.65rem;
-    background: #cbd5e1;
-    border-radius: 6px 6px 0 0;
-    font-size: 0.78rem;
-    font-family: 'Consolas', monospace;
-    color: #334155;
-    cursor: pointer;
-    user-select: none;
-    border: 1px solid transparent;
+    background: #181825;
+    color: #a6adc8;
+    border: 1px solid #313244;
     border-bottom: none;
+    padding: 0.3rem 0.65rem;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: Consolas, 'Fira Code', monospace;
+    direction: ltr;
     transition: all 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
 }
 
 .file-tab:hover {
-    background: #e2e8f0;
+    background: #25263a;
+    color: #cdd6f4;
 }
 
 .file-tab.active {
-    background: #1e1e2e;
-    color: #ffffff;
-    border-color: #313244;
+    background: #25263a;
+    color: #89b4fa;
+    border-color: #45475a;
+    border-top: 2px solid #89b4fa;
+    font-weight: 600;
 }
 
 .file-tab-close {
-    font-size: 0.75rem;
-    opacity: 0.6;
-    margin-right: 0.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #9399b2;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: 0.2rem;
+    transition: all 0.15s ease;
 }
 
 .file-tab-close:hover {
-    opacity: 1;
-    color: #ef4444;
+    background: rgba(243, 139, 168, 0.2);
+    color: #f38ba8;
+}
+
+.editor-tabs-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+    direction: ltr;
+}
+
+.example-select {
+    background: #181825;
+    color: #cdd6f4;
+    border: 1px solid #313244;
+    border-radius: 6px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.78rem;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s ease;
+    max-width: 210px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.example-select:hover, .example-select:focus {
+    border-color: #89b4fa;
+}
+
+.example-select option {
+    background: #181825;
+    color: #cdd6f4;
 }
 
 .btn-add-class-tab {
-    background: #ffffff;
-    border: 1px solid var(--border-dark);
+    background: transparent;
+    border: 1px dashed #45475a;
+    color: #a6adc8;
+    padding: 0.25rem 0.55rem;
     border-radius: 4px;
-    padding: 0.2rem 0.5rem;
     font-size: 0.75rem;
     cursor: pointer;
-    display: flex;
+    transition: all 0.15s ease;
+    display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    font-weight: 600;
-    color: var(--primary);
+    white-space: nowrap;
+}
+
+.btn-add-class-tab:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #cdd6f4;
+    border-color: #89b4fa;
+}
+
+/* גוף עורך הקוד */
+.editor-body {
+    position: relative;
+    flex: 1;
+    background: var(--code-bg, #1e1e2e);
+    overflow: hidden;
+    font-family: Consolas, 'Fira Code', Monaco, monospace;
+    font-size: 14px;
+    line-height: 22px;
+    min-height: 0;
+    display: flex;
 }
 
 .editor-wrapper {
-    flex: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
-    min-height: 0;
-    background: var(--code-bg);
-    position: relative;
-    overflow: hidden;
+    direction: ltr;
 }
 
 .line-numbers {
     width: 44px;
-    padding: 1rem 0.25rem;
     background: #181825;
     color: #585b70;
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 22px;
+    padding: 0.85rem 0.25rem;
     text-align: center;
     user-select: none;
-    border-left: 1px solid #313244;
+    font-size: 13px;
+    line-height: 22px;
+    border-right: 1px solid #313244;
+    direction: ltr;
     overflow: hidden;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .line-number-item {
+    display: block;
     height: 22px;
     line-height: 22px;
+    border-radius: 3px;
+    transition: all 0.15s ease;
 }
 
 .line-number-item.active-line-num {
-    color: #ffffff;
-    background: var(--primary);
-    border-radius: 3px;
-    font-weight: bold;
+    color: #38bdf8;
+    font-weight: 700;
+    background: rgba(56, 189, 248, 0.2);
 }
 
 .code-container {
     flex: 1;
     position: relative;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
     direction: ltr;
     text-align: left;
 }
 
-#code-textarea,
-#code-highlighter {
+#code-textarea, #code-highlighter {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    padding: 1rem 1.15rem;
-    font-family: 'Consolas', 'Courier New', monospace;
+    padding: 0.85rem 1rem;
+    margin: 0;
+    font-family: Consolas, 'Fira Code', Monaco, monospace;
     font-size: 14px;
     line-height: 22px;
-    tab-size: 4;
     white-space: pre;
+    tab-size: 4;
+    border: none;
+    outline: none;
+    box-sizing: border-box;
     direction: ltr;
     text-align: left;
-    box-sizing: border-box;
 }
 
 #code-textarea {
+    color: var(--code-text, #cdd6f4);
     background: transparent;
-    color: #cdd6f4;
     caret-color: #38bdf8;
-    border: none;
-    outline: none;
-    resize: none;
     z-index: 2;
+    resize: none;
     overflow: auto;
 }
 
 #code-textarea::selection {
-    background: rgba(79, 70, 229, 0.5);
+    background: rgba(59, 130, 246, 0.45);
     color: #ffffff;
 }
 
@@ -1035,6 +1060,7 @@ body {
     overflow: hidden;
 }
 
+/* שורת סימון הדגשה ללא תוכן טקסטואלי */
 .code-line-highlight {
     height: 22px;
     line-height: 22px;
@@ -1043,8 +1069,105 @@ body {
 }
 
 .code-line-highlight.active-line {
-    background-color: rgba(79, 70, 229, 0.35);
-    border-left: 4px solid #818cf8;
+    background-color: var(--active-line, rgba(56, 189, 248, 0.2));
+    border-left: 3px solid #38bdf8;
+}
+
+/* סרגל בקרת דיבאג (Debugger Controls Bar) בתחתית העורך */
+.controls-bar, #controls-card {
+    background: #181825;
+    border-top: 1px solid #313244;
+    padding: 0.55rem 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    direction: rtl;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    box-shadow: none;
+}
+
+.playback-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-ctrl {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.btn-ctrl-primary {
+    background: var(--primary, #2563eb);
+    color: #ffffff;
+}
+
+.btn-ctrl-primary:hover {
+    background: var(--primary-hover, #1d4ed8);
+}
+
+.btn-ctrl-secondary {
+    background: #313244;
+    color: #cdd6f4;
+    border-color: #45475a;
+}
+
+.btn-ctrl-secondary:hover {
+    background: #45475a;
+    color: #ffffff;
+}
+
+.btn-ctrl-danger {
+    background: rgba(243, 139, 168, 0.15);
+    color: #f38ba8;
+    border-color: rgba(243, 139, 168, 0.3);
+}
+
+.btn-ctrl-danger:hover {
+    background: #f38ba8;
+    color: #11111b;
+}
+
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: #a6adc8;
+}
+
+.speed-control input[type="range"],
+.speed-slider {
+    width: 80px;
+    cursor: pointer;
+    accent-color: var(--primary, #89b4fa);
+}
+
+.step-info,
+.step-badge {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: Consolas, monospace;
 }
 
 /* חלון השלמה אוטומטית (IntelliSense) */
@@ -1102,29 +1225,67 @@ body {
     overflow-y: auto;
 }
 
-/* סרגל משוב והסברים פדגוגיים */
+/* סרגל משוב פדגוגי בעברית בתחתית העורך */
 .status-banner {
-    background: #ffffff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.5rem 0.85rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 0.45rem 0.85rem;
+    background: #11111b;
+    border-top: 1px solid #313244;
     font-size: 0.82rem;
-    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
     flex-shrink: 0;
+    color: #cdd6f4;
+    direction: rtl;
+    border-radius: 0 0 11px 11px;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
 }
 
 .status-content {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-weight: 500;
+    gap: 0.45rem;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .status-icon {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+#status-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.82rem;
+}
+
+.status-banner.error {
+    background: rgba(243, 139, 168, 0.15);
+    color: #f38ba8;
+    border-color: rgba(243, 139, 168, 0.3);
+}
+
+.status-banner.success {
+    background: rgba(166, 227, 161, 0.15);
+    color: #a6e3a1;
+    border-color: rgba(166, 227, 161, 0.3);
+}
+
+.status-banner.info {
+    background: #11111b;
+    color: #89b4fa;
+    border-color: #313244;
+}
+
+.status-banner.warning {
+    background: rgba(249, 226, 175, 0.15);
+    color: #f9e2af;
+    border-color: rgba(249, 226, 175, 0.3);
 }
 
 .badge {

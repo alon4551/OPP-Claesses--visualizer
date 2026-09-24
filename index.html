@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>סטודיו ומאייר תכנות מונחה עצמים והורשה — C# || Java | אלון שרייבמן</title>
-    <link rel="stylesheet" href="css/style.css?v=1.4">
+    <link rel="stylesheet" href="css/style.css?v=2.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
 </head>
 <body>
@@ -173,73 +173,75 @@
         <!-- עמודה שמאלית (בממשק RTL): עורך קוד C# ובקרת ריצה (Editor & Controls) -->
         <div class="editor-column">
 
-            <!-- 1. סרגל בקרת הרצה וניפוי שגיאות -->
-            <div class="card controls-card">
-                <div class="card-header">
-                    <span>⏯️ בקרת הרצה וניפוי שגיאות (Time-Travel Debugger)</span>
-                    <div id="step-counter" class="step-info">צעד 1 / 1</div>
-                </div>
-                <div class="controls-bar-body">
-                    <div class="control-btn-group">
-                        <button id="btn-play" class="btn btn-success">▶ נגן</button>
-                        <button id="btn-step-prev" class="btn btn-secondary">צעד קודם ◀</button>
-                        <button id="btn-step-next" class="btn btn-primary">▶ צעד הבא</button>
-                        <button id="btn-reset" class="btn btn-danger">איפוס ↺</button>
-                    </div>
-                    <div class="speed-control">
-                        <label for="speed-slider">מהירות:</label>
-                        <input type="range" id="speed-slider" class="speed-slider" min="1" max="10" value="6">
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. עורך קוד C# מרובה קבצים ולשוניות מחלקות -->
-            <section class="card editor-panel">
-                <div class="card-header">
-                    <span id="editor-title">💻 עורך קוד ומחלקות (C#)</span>
-                    <div class="card-header-actions">
+            <section class="editor-panel" id="editor-panel">
+                <!-- 1. סרגל לשוניות קבצים, בחירת דוגמאות והוספת מחלקה -->
+                <div class="editor-tabs-bar" id="editor-tabs-bar">
+                    <div class="editor-tabs-list" id="editor-tabs-list"></div>
+                    <div class="editor-tabs-actions">
                         <select id="example-code-select" class="example-select" title="טען תבנית מוכנה">
                             <option value="clean_chain" selected>🔹 שרשרת 3 רמות: A ➔ B ➔ C (פולימורפיזם, בנאים ו-Show)</option>
                             <option value="clean">✨ פרויקט נקי (רק Program.Main ריק)</option>
                             <option value="basic_chain">📜 שרשרת מורחבת: A ➔ B ➔ C (מחרוזות ובנאים)</option>
                             <option value="employee_hierarchy">💼 היררכיית עובדים: Employee ➔ Manager / Developer (מערך הטרוגני)</option>
                         </select>
-                        <span class="badge" title="לחץ Ctrl+Space להשלמה אוטומטית">Ctrl+Space</span>
+                        <button type="button" class="btn-add-class-tab" id="btn-add-class-tab" title="הוסף קובץ מחלקה חדש">
+                            <span>➕</span>
+                            <span>מחלקה חדשה</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- סרגל לשוניות קבצים -->
-                <div class="editor-tabs-bar">
-                    <div class="editor-tabs-list" id="editor-tabs-list"></div>
-                    <button type="button" class="btn-add-class-tab" id="btn-add-class-tab" title="הוסף קובץ מחלקה חדש">
-                        <span>➕</span>
-                        <span>מחלקה חדשה</span>
-                    </button>
-                </div>
+                <!-- 2. אזור הקוד -->
+                <div class="editor-body">
+                    <div class="editor-wrapper">
+                        <div class="line-numbers" id="line-numbers">1<br>2<br>3<br></div>
+                        <div class="code-container">
+                            <div id="code-highlighter"></div>
+                            <textarea id="code-textarea" class="code-textarea" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+                            <div class="active-line-highlight" id="active-line-highlight"></div>
 
-                <!-- אזור הקוד -->
-                <div class="editor-wrapper">
-                    <div class="line-numbers" id="line-numbers">1<br>2<br>3<br></div>
-                    <div class="code-container">
-                        <div id="code-highlighter"></div>
-                        <textarea id="code-textarea" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-
-                        <!-- חלון השלמה אוטומטית IntelliSense -->
-                        <div id="autocomplete-popup" class="autocomplete-popup" style="display: none;">
-                            <div class="autocomplete-list"></div>
-                            <div class="autocomplete-doc"></div>
+                            <!-- חלון השלמה אוטומטית IntelliSense -->
+                            <div id="autocomplete-popup" class="autocomplete-popup" style="display: none;">
+                                <div class="autocomplete-list"></div>
+                                <div class="autocomplete-doc"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- 3. סרגל משוב פדגוגי בעברית -->
-            <div id="status-banner" class="status-banner info">
-                <div class="status-content">
-                    <span id="status-icon" class="status-icon">💡</span>
-                    <span id="status-text">מוכן להרצה. לחץ על "צעד הבא" או "נגן" להתחלה.</span>
+                <!-- 3. סרגל בקרת דיבאג בתחתית העורך (Debugger Controls Bar) -->
+                <div class="controls-bar" id="controls-card">
+                    <div class="playback-buttons">
+                        <button type="button" id="btn-play" class="btn-ctrl btn-ctrl-primary" title="נגן / השהה הרצה אוטומטית">
+                            <span>▶</span>
+                            <span>נגן</span>
+                        </button>
+                        <button type="button" id="btn-step-prev" class="btn-ctrl btn-ctrl-secondary" title="צעד קודם">
+                            <span>צעד קודם ◀</span>
+                        </button>
+                        <button type="button" id="btn-step-next" class="btn-ctrl btn-ctrl-secondary" title="צעד הבא">
+                            <span>▶ צעד הבא</span>
+                        </button>
+                        <button type="button" id="btn-reset" class="btn-ctrl btn-ctrl-danger" title="איפוס">
+                            <span>איפוס ↺</span>
+                        </button>
+                    </div>
+                    <div class="speed-control">
+                        <label for="speed-slider">מהירות:</label>
+                        <input type="range" id="speed-slider" class="speed-slider" min="1" max="10" value="6">
+                        <div id="step-counter" class="step-info">צעד 1 / 1</div>
+                    </div>
                 </div>
-            </div>
+
+                <!-- 4. סרגל משוב פדגוגי בעברית -->
+                <div id="status-banner" class="status-banner info">
+                    <div class="status-content">
+                        <span id="status-icon" class="status-icon">💡</span>
+                        <span id="status-text">מוכן להרצה. לחץ על "צעד הבא" או "נגן" להתחלה.</span>
+                    </div>
+                </div>
+
+            </section>
 
         </div>
 
