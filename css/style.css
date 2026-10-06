@@ -869,6 +869,8 @@ body {
     display: flex;
     align-items: stretch;
     height: 100%;
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     gap: 4px;
@@ -934,12 +936,111 @@ body {
     color: #f38ba8;
 }
 
-.editor-tabs-actions {
+/* סרגל תבניות קוד לדוגמה וכלים מהירים - שורה ייעודית ועצמאית למניעת חפיפה עם מחלקות */
+.editor-presets-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    background: #181825;
+    border-bottom: 1px solid #2a2b3d;
+    padding: 0.35rem 0.75rem;
+    min-height: 38px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    direction: rtl;
+}
+
+.preset-select-wrapper {
     display: flex;
     align-items: center;
     gap: 0.45rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.preset-select-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #a6adc8;
+    white-space: nowrap;
+    user-select: none;
     flex-shrink: 0;
-    direction: ltr;
+}
+
+.preset-label-icon {
+    font-size: 0.85rem;
+    color: #f9e2af;
+}
+
+.editor-presets-bar .example-select {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border: 1px solid #3b3d54;
+    border-radius: 6px;
+    padding: 0.28rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+}
+
+.editor-presets-bar .example-select:hover,
+.editor-presets-bar .example-select:focus {
+    border-color: #89b4fa;
+    background: #232438;
+    box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.2);
+}
+
+.editor-presets-bar .example-select option {
+    background: #181825;
+    color: #cdd6f4;
+    padding: 0.35rem;
+    font-size: 0.82rem;
+}
+
+.preset-tools-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.btn-quick-input-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(2, 132, 199, 0.15);
+    border: 1px solid #0284c7;
+    color: #38bdf8;
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.btn-quick-input-trigger:hover {
+    background: rgba(2, 132, 199, 0.3);
+    border-color: #38bdf8;
+    color: #e0f2fe;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
 }
 
 .example-select {
@@ -953,10 +1054,7 @@ body {
     cursor: pointer;
     font-family: inherit;
     transition: border-color 0.15s ease;
-    max-width: 210px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
+    max-width: 100%;
 }
 
 .example-select:hover, .example-select:focus {
@@ -1433,10 +1531,14 @@ body {
         padding: 0.25rem 0.55rem 0;
     }
 
-    .example-select {
-        max-width: 170px;
-        font-size: 0.74rem;
-        padding: 0.2rem 0.4rem;
+    .editor-presets-bar {
+        min-height: 34px;
+        padding: 0.2rem 0.55rem;
+    }
+
+    .editor-presets-bar .example-select {
+        font-size: 0.76rem;
+        padding: 0.2rem 0.45rem;
     }
 
     .btn-add-class-tab {
@@ -1557,10 +1659,14 @@ body {
         min-height: 38px;
     }
 
-    .example-select {
-        max-width: 175px;
-        font-size: 0.74rem;
-        padding: 0.2rem 0.4rem;
+    .editor-presets-bar {
+        padding: 0.25rem 0.5rem;
+        min-height: 34px;
+    }
+
+    .editor-presets-bar .example-select {
+        font-size: 0.76rem;
+        padding: 0.2rem 0.45rem;
     }
 
     .btn-add-class-tab {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>סטודיו ומאייר תכנות מונחה עצמים והורשה — C# || Java | אלון שרייבמן</title>
-    <link rel="stylesheet" href="css/style.css?v=3.5">
+    <link rel="stylesheet" href="css/style.css?v=4.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
 </head>
 <body>
@@ -227,10 +227,13 @@
         <div class="editor-column">
 
             <section class="editor-panel" id="editor-panel">
-                <!-- 1. סרגל לשוניות קבצים, בחירת דוגמאות והוספת מחלקה -->
-                <div class="editor-tabs-bar" id="editor-tabs-bar">
-                    <div class="editor-tabs-list" id="editor-tabs-list"></div>
-                    <div class="editor-tabs-actions">
+                <!-- 1. סרגל תבניות קוד לדוגמה וטבלת קלט (Presets & Quick Tools Bar) -->
+                <div class="editor-presets-bar" id="editor-presets-bar">
+                    <div class="preset-select-wrapper">
+                        <label for="example-code-select" class="preset-select-label">
+                            <span class="preset-label-icon">⚡</span>
+                            <span>תבנית קוד:</span>
+                        </label>
                         <select id="example-code-select" class="example-select" title="טען תבנית מוכנה">
                             <option value="clean_chain" selected>🔹 שרשרת 3 רמות: A ➔ B ➔ C (פולימורפיזם, בנאים ו-Show)</option>
                             <option value="clean">✨ פרויקט נקי (רק Program.Main ריק)</option>
@@ -238,15 +241,22 @@
                             <option value="employee_hierarchy">💼 היררכיית עובדים: Employee ➔ Manager / Developer (מערך הטרוגני)</option>
                             <option value="input_oop_students">📥 קלט נתונים בלולאה: יצירת עצמים (Console.ReadLine / Scanner)</option>
                         </select>
-                        <button type="button" class="btn-add-class-tab" id="btn-quick-open-input" title="פתח טבלת קלט נתונים (Console.ReadLine / Scanner)" style="background: rgba(2, 132, 199, 0.15); border: 1px solid #0284c7; color: #38bdf8;">
-                            <span>📥</span>
+                    </div>
+                    <div class="preset-tools-group">
+                        <button type="button" class="btn-quick-input-trigger" id="btn-quick-open-input" title="פתח טבלת קלט נתונים (Console.ReadLine / Scanner)">
+                            <span class="btn-quick-icon">📥</span>
                             <span>טבלת קלט</span>
                         </button>
-                        <button type="button" class="btn-add-class-tab" id="btn-add-class-tab" title="הוסף קובץ מחלקה חדש">
-                            <span>➕</span>
-                            <span>מחלקה חדשה</span>
-                        </button>
                     </div>
+                </div>
+
+                <!-- 2. סרגל לשוניות קבצים ומחלקות בלבד (File Tabs Bar) -->
+                <div class="editor-tabs-bar" id="editor-tabs-bar">
+                    <div class="editor-tabs-list" id="editor-tabs-list"></div>
+                    <button type="button" class="btn-add-class-tab" id="btn-add-class-tab" title="הוסף קובץ מחלקה חדש">
+                        <span class="btn-add-icon">➕</span>
+                        <span>מחלקה חדשה</span>
+                    </button>
                 </div>
 
                 <!-- 2. אזור הקוד -->
