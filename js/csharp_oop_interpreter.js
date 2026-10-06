@@ -13,6 +13,73 @@ class CSharpOOPInterpreter {
         this.maxSteps = 1500;
         this.snapshots = [];
         this.heapCounter = 1;
+        this.inputQueue = [];
+        this.currentInputs = [];
+        this.consumedInputs = [];
+        this.currentInputIndex = 0;
+        this.lastInputEvent = null;
+        this.currentExecutionLine = 1;
+        this.currentExecutionFile = 'Program.cs';
+        this.currentTargetVar = null;
+    }
+
+    setInputQueue(inputs) {
+        if (Array.isArray(inputs)) {
+            this.inputQueue = inputs.map(item => {
+                if (typeof item === 'object' && item !== null && 'value' in item) {
+                    return String(item.value);
+                }
+                return String(item);
+            });
+        } else if (typeof inputs === 'string') {
+            this.inputQueue = inputs.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+        } else {
+            this.inputQueue = [];
+        }
+    }
+
+    readNextInput(source, type = 'string', line = 1, target = null) {
+        const inputIdx = this.currentInputIndex++;
+        const rawVal = this.currentInputs.length > 0 ? this.currentInputs.shift() : '0';
+        let parsedVal = rawVal;
+        if (type === 'int') {
+            const num = parseInt(rawVal, 10);
+            parsedVal = isNaN(num) ? 0 : num;
+        } else if (type === 'double' || type === 'float') {
+            const num = parseFloat(rawVal);
+            parsedVal = isNaN(num) ? 0.0 : num;
+        } else if (type === 'bool') {
+            parsedVal = String(rawVal).toLowerCase() === 'true';
+        } else if (type === 'char') {
+            parsedVal = String(rawVal).length > 0 ? String(rawVal).charAt(0) : ' ';
+        }
+
+        const inputEvent = {
+            index: inputIdx,
+            rawVal: String(rawVal),
+            parsedVal: parsedVal,
+            type: type,
+            source: source,
+            line: line,
+            target: target || this.currentTargetVar
+        };
+
+        this.consumedInputs.push(inputEvent);
+        this.lastInputEvent = inputEvent;
+        this.consoleLines.push(`> ${rawVal}`);
+
+        this.pushSnapshot({
+            file: this.currentExecutionFile || 'Program.cs',
+            line: line,
+            desc: `📥 קליטת נתון מהמשתמש [קלט #${inputIdx + 1}]: "${rawVal}" (${source})`,
+            action: 'input',
+            highlightAction: 'input_received',
+            isInputStep: true,
+            inputEvent: inputEvent,
+            targetVar: target || this.currentTargetVar
+        });
+
+        return parsedVal;
     }
 
     /**
@@ -340,7 +407,24 @@ class CSharpOOPInterpreter {
     /**
      * מריץ את התוכנית מנקודת הכניסה (Program.Main או Main.main) ומייצר סנאפשוטים לדיבאגר
      */
-    execute(files) {
+    execute(files, inputQueue = null) {
+        if (inputQueue !== null && inputQueue !== undefined && (Array.isArray(inputQueue) ? inputQueue.length > 0 : String(inputQueue).trim().length > 0)) {
+            this.setInputQueue(inputQueue);
+        }
+        const rawInputs = Array.isArray(this.inputQueue) ? this.inputQueue : [];
+        this.currentInputs = rawInputs.map(item => {
+            if (typeof item === 'object' && item !== null && 'value' in item) {
+                return String(item.value);
+            }
+            return String(item);
+        });
+        this.consumedInputs = [];
+        this.currentInputIndex = 0;
+        this.lastInputEvent = null;
+        this.currentExecutionLine = 1;
+        this.currentExecutionFile = 'Program.cs';
+        this.currentTargetVar = null;
+
         this.parseFiles(files);
         this.snapshots = [];
         this.heap = {};          // heapId -> { id, className, hierarchy, layers: { 'A': {...}, 'B': {...} }, isArray, items }
@@ -450,9 +534,29 @@ class CSharpOOPInterpreter {
             const text = rawText.trim();
             const lineNum = lineObj.lineNum;
             const filename = this.classes[ctx.className]?.filename || 'Program.cs';
+            this.currentExecutionLine = lineNum;
+            this.currentExecutionFile = filename;
+            this.currentTargetVar = null;
 
             i++;
             if (!text || text === '{' || text === '}') continue;
+
+            // אתחול סורק קלט: Scanner reader = new Scanner(System.in);
+            const scannerDeclMatch = text.match(/Scanner\s+([A-Za-z0-9_]+)\s*=\s*new\s+Scanner\s*\([^)]*\)\s*;?/);
+            if (scannerDeclMatch) {
+                const scannerName = scannerDeclMatch[1];
+                ctx.scope[scannerName] = 'Scanner';
+                this.syncStackVar(scannerName, 'Scanner', 'Scanner(System.in)', false);
+                this.pushSnapshot({
+                    file: filename,
+                    line: lineNum,
+                    desc: `אתחול סורק קלט: Scanner ${scannerName} = new Scanner(System.in)`,
+                    action: "var_decl",
+                    targetVar: scannerName,
+                    activeLineText: text
+                });
+                continue;
+            }
 
             // 1. קונסול הדפסה: Console.WriteLine(...) / System.out.println(...)
             const cwMatch = text.match(/(?:Console\.(?:WriteLine|Write)|System\.out\.(?:println|print))\s*\((.*)\)\s*;?$/);
@@ -740,7 +844,10 @@ class CSharpOOPInterpreter {
 
             // 10ב. קריאה לפעולה על אובייקט (עם פולימורפיזם): obj.Method(args) או team[i].Method(args) או var = obj.Method(args)
             const methodCallMatch = text.match(/^(?:([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*=\s*)?(?:([A-Za-z0-9_]+)\s*=\s*)?([A-Za-z0-9_]+(?:\[[^\]]+\])?)\.([A-Za-z0-9_]+)\s*\((.*)\)\s*;?$/);
-            if (methodCallMatch && methodCallMatch[4] !== 'Console' && methodCallMatch[4] !== 'Math' && methodCallMatch[4] !== 'System') {
+            const nonHeapCallTypes = ['Console', 'Math', 'System', 'int', 'Integer', 'double', 'Double', 'float', 'Float', 'char', 'Char', 'bool', 'Boolean', 'Convert'];
+            const isNonHeapCall = methodCallMatch && (nonHeapCallTypes.includes(methodCallMatch[4]) || (ctx.scope && ctx.scope[methodCallMatch[4]] === 'Scanner'));
+
+            if (methodCallMatch && !isNonHeapCall) {
                 const returnDeclType = methodCallMatch[1] || null;
                 const assignVar = methodCallMatch[2] || methodCallMatch[3] || null;
                 const targetObjName = methodCallMatch[4];
@@ -801,13 +908,14 @@ class CSharpOOPInterpreter {
                 }
             }
 
-            // 12. הצהרת משתנה פרימיטיבי או העתקת רפרנס: int x = 10; A obj2 = obj;
+            // 12. הצהרת משתנה פרימיטיבי / מחרוזת / תוצאת פעולה: int x = 10; int n = int.Parse(Console.ReadLine()); A obj2 = obj;
             const primDeclMatch = text.match(/^([A-Za-z0-9_<>]+)\s+([A-Za-z0-9_]+)\s*(?:=\s*(.*))?;?$/);
-            if (primDeclMatch && !text.includes('(')) {
+            if (primDeclMatch && !text.includes('new ') && !text.startsWith('return ') && !text.startsWith('if ') && !text.startsWith('while ') && !text.startsWith('for ')) {
                 const type = primDeclMatch[1];
                 const name = primDeclMatch[2];
                 const rhs = primDeclMatch[3];
 
+                this.currentTargetVar = name;
                 let val = this.getDefaultValForType(type);
                 if (rhs) {
                     val = this.evaluateExpression(rhs.replace(/;$/, '').trim(), ctx);
@@ -815,6 +923,11 @@ class CSharpOOPInterpreter {
                 const isRef = (typeof val === 'string' && !!this.heap[val]);
                 ctx.scope[name] = val;
                 this.syncStackVar(name, type, val, isRef);
+
+                const isInput = this.lastInputEvent && this.lastInputEvent.line === lineNum;
+                if (isInput) {
+                    this.lastInputEvent.target = name;
+                }
 
                 this.pushSnapshot({
                     file: filename,
@@ -826,7 +939,9 @@ class CSharpOOPInterpreter {
                     highlightAction: isRef ? "reference_assign" : null,
                     targetVar: name,
                     heapId: isRef ? val : null,
-                    activeLineText: text
+                    activeLineText: text,
+                    isInputStep: isInput,
+                    inputEvent: isInput ? this.lastInputEvent : null
                 });
                 continue;
             }
@@ -837,6 +952,7 @@ class CSharpOOPInterpreter {
                 const lhs = assignMatch[1];
                 const op = assignMatch[2];
                 const rhsStr = assignMatch[3].replace(/;$/, '').trim();
+                this.currentTargetVar = lhs.replace('this.', '');
                 const rhsVal = this.evaluateExpression(rhsStr, ctx);
 
                 if (lhs.startsWith('this.')) {
@@ -867,13 +983,20 @@ class CSharpOOPInterpreter {
                     const vType = this.stack[lhs]?.type || (isRef ? this.heap[newVal].className : (typeof newVal === 'number' ? 'int' : 'string'));
                     this.syncStackVar(lhs, vType, newVal, isRef);
 
+                    const isInput = this.lastInputEvent && this.lastInputEvent.line === lineNum;
+                    if (isInput) {
+                        this.lastInputEvent.target = lhs;
+                    }
+
                     this.pushSnapshot({
                         file: filename,
                         line: lineNum,
                         desc: `עדכון משתנה ב-Stack: ${lhs} = ${newVal}`,
                         action: "var_assign",
                         targetVar: lhs,
-                        activeLineText: text
+                        activeLineText: text,
+                        isInputStep: isInput,
+                        inputEvent: isInput ? this.lastInputEvent : null
                     });
                 }
                 continue;
@@ -1225,6 +1348,72 @@ class CSharpOOPInterpreter {
         if (expr === 'false') return false;
         if (expr === 'null') return null;
 
+        // 1. קליטת קלט ישיר מ-Console.ReadLine()
+        if (expr === 'Console.ReadLine()' || expr === 'Console.ReadLine') {
+            return this.readNextInput('Console.ReadLine()', 'string', this.currentExecutionLine || 1, this.currentTargetVar);
+        }
+
+        // 2. המרות טיפוסים לקלט או ביטויים (int.Parse, double.Parse, Convert.To...)
+        const intParseMatch = expr.match(/^(?:int\.Parse|Integer\.parseInt|Convert\.ToInt32)\s*\((.*)\)$/);
+        if (intParseMatch) {
+            const inner = intParseMatch[1].trim();
+            if (inner.includes('Console.ReadLine')) {
+                return this.readNextInput('Console.ReadLine()', 'int', this.currentExecutionLine || 1, this.currentTargetVar);
+            }
+            const val = this.evaluateExpression(inner, ctx);
+            const num = parseInt(val, 10);
+            return isNaN(num) ? 0 : num;
+        }
+
+        const doubleParseMatch = expr.match(/^(?:double\.Parse|Double\.parseDouble|Convert\.ToDouble|float\.Parse|Float\.parseFloat)\s*\((.*)\)$/);
+        if (doubleParseMatch) {
+            const inner = doubleParseMatch[1].trim();
+            if (inner.includes('Console.ReadLine')) {
+                return this.readNextInput('Console.ReadLine()', 'double', this.currentExecutionLine || 1, this.currentTargetVar);
+            }
+            const val = this.evaluateExpression(inner, ctx);
+            const num = parseFloat(val);
+            return isNaN(num) ? 0.0 : num;
+        }
+
+        const charParseMatch = expr.match(/^(?:char\.Parse|Convert\.ToChar)\s*\((.*)\)$/);
+        if (charParseMatch) {
+            const inner = charParseMatch[1].trim();
+            if (inner.includes('Console.ReadLine')) {
+                return this.readNextInput('Console.ReadLine()', 'char', this.currentExecutionLine || 1, this.currentTargetVar);
+            }
+            const val = this.evaluateExpression(inner, ctx);
+            const str = String(val !== undefined && val !== null ? val : '');
+            return str.length > 0 ? str.charAt(0) : ' ';
+        }
+
+        const boolParseMatch = expr.match(/^(?:bool\.Parse|Boolean\.parseBoolean|Convert\.ToBoolean)\s*\((.*)\)$/);
+        if (boolParseMatch) {
+            const inner = boolParseMatch[1].trim();
+            if (inner.includes('Console.ReadLine')) {
+                return this.readNextInput('Console.ReadLine()', 'bool', this.currentExecutionLine || 1, this.currentTargetVar);
+            }
+            const val = this.evaluateExpression(inner, ctx);
+            return String(val).toLowerCase() === 'true';
+        }
+
+        // 3. קריאות ל-Scanner ב-Java (reader.nextInt(), scanner.next(), etc.)
+        const scannerCallMatch = expr.match(/^[A-Za-z0-9_]+\.(nextInt|nextDouble|nextFloat|next|nextLine|nextBoolean|hasNext|hasNextInt|hasNextLine)\s*\(\)$/);
+        if (scannerCallMatch) {
+            const method = scannerCallMatch[1];
+            if (method === 'nextInt') {
+                return this.readNextInput(`Scanner.${method}()`, 'int', this.currentExecutionLine || 1, this.currentTargetVar);
+            } else if (method === 'nextDouble' || method === 'nextFloat') {
+                return this.readNextInput(`Scanner.${method}()`, 'double', this.currentExecutionLine || 1, this.currentTargetVar);
+            } else if (method === 'next' || method === 'nextLine') {
+                return this.readNextInput(`Scanner.${method}()`, 'string', this.currentExecutionLine || 1, this.currentTargetVar);
+            } else if (method === 'nextBoolean') {
+                return this.readNextInput(`Scanner.${method}()`, 'bool', this.currentExecutionLine || 1, this.currentTargetVar);
+            } else if (method.startsWith('hasNext')) {
+                return this.currentInputs && this.currentInputs.length > 0;
+            }
+        }
+
         // החלפת גישה ל-Length של מערך: arr.Length או arr.length בכל מקום בביטוי
         expr = expr.replace(/\b([A-Za-z0-9_]+)\.(?:Length|length)\b/g, (m, arrVar) => {
             const arrHeapId = ctx.scope[arrVar] !== undefined ? ctx.scope[arrVar] : this.stack[arrVar]?.value;
@@ -1271,7 +1460,7 @@ class CSharpOOPInterpreter {
 
         // החלפת קריאות לפעולות אובייקט בתוך ביטוי: obj.Method(args)
         expr = expr.replace(/\b([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\(([^)]*)\)/g, (m, targetName, methodName, argsStr) => {
-            if (targetName === 'Console' || targetName === 'Math') return m;
+            if (targetName === 'Console' || targetName === 'Math' || targetName === 'System' || (ctx.scope && ctx.scope[targetName] === 'Scanner')) return m;
             const heapId = ctx.scope[targetName] !== undefined ? ctx.scope[targetName] : this.stack[targetName]?.value;
             if (heapId && this.heap[heapId]) {
                 const ret = this.invokeMethod(targetName, methodName, argsStr, ctx, this.classes[ctx.className]?.filename || 'Program.cs', 1);
@@ -1403,6 +1592,9 @@ class CSharpOOPInterpreter {
             return heapObj && heapObj.isArray ? heapObj.size : 0;
         });
 
+        // החלפת reader.hasNext() או scanner.hasNextInt() בתוך תנאי לולאה
+        cond = cond.replace(/\b[A-Za-z0-9_]+\.(?:hasNext|hasNextInt|hasNextLine)\s*\(\)/g, () => (this.currentInputs && this.currentInputs.length > 0 ? 'true' : 'false'));
+
         try {
             const resolved = cond.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g, (match) => {
                 if (match === 'true' || match === 'false' || match === 'null') return match;
@@ -1445,7 +1637,16 @@ class CSharpOOPInterpreter {
         const elseLines = [];
 
         // איסוף בלוק if
-        if (lines[i]?.text.trim() === '{') {
+        if (lines[startIdx]?.text.includes('{')) {
+            let depth = 1;
+            while (i < lines.length && depth > 0) {
+                const t = lines[i].text;
+                if (t.includes('{')) depth++;
+                if (t.includes('}')) depth--;
+                if (depth > 0) ifLines.push(lines[i]);
+                i++;
+            }
+        } else if (lines[i]?.text.trim().startsWith('{')) {
             let depth = 1;
             i++;
             while (i < lines.length && depth > 0) {
@@ -1464,7 +1665,16 @@ class CSharpOOPInterpreter {
         if (i < lines.length && lines[i]?.text.trim().startsWith('else')) {
             const elseText = lines[i].text.trim();
             i++;
-            if (elseText === 'else' && i < lines.length && lines[i]?.text.trim() === '{') {
+            if (elseText.includes('{')) {
+                let depth = 1;
+                while (i < lines.length && depth > 0) {
+                    const t = lines[i].text;
+                    if (t.includes('{')) depth++;
+                    if (t.includes('}')) depth--;
+                    if (depth > 0) elseLines.push(lines[i]);
+                    i++;
+                }
+            } else if (i < lines.length && lines[i]?.text.trim().startsWith('{')) {
                 let depth = 1;
                 i++;
                 while (i < lines.length && depth > 0) {
@@ -1487,7 +1697,16 @@ class CSharpOOPInterpreter {
         let i = startIdx + 1;
         const bodyLines = [];
 
-        if (lines[i]?.text.trim() === '{') {
+        if (lines[startIdx]?.text.includes('{')) {
+            let depth = 1;
+            while (i < lines.length && depth > 0) {
+                const t = lines[i].text;
+                if (t.includes('{')) depth++;
+                if (t.includes('}')) depth--;
+                if (depth > 0) bodyLines.push(lines[i]);
+                i++;
+            }
+        } else if (lines[i]?.text.trim().startsWith('{')) {
             let depth = 1;
             i++;
             while (i < lines.length && depth > 0) {
@@ -1554,7 +1773,10 @@ class CSharpOOPInterpreter {
             stack: deepStack,
             heap: deepHeap,
             callStack: deepCallStack,
-            console: deepConsole
+            console: deepConsole,
+            isInputStep: !!meta.isInputStep,
+            inputEvent: meta.inputEvent || (this.lastInputEvent && this.lastInputEvent.line === (meta.line || 1) ? this.lastInputEvent : null),
+            consumedInputsCount: this.consumedInputs ? this.consumedInputs.length : 0
         });
     }
 }

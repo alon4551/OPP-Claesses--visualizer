@@ -16,9 +16,30 @@ class OOPVisualizerApp {
 
         this.initPresets();
         this.initDOM();
+        this.initInputTable();
         this.attachEvents();
         this.applyLanguageUI(this.currentLanguage);
         this.loadPreset('clean_chain');
+    }
+
+    initInputTable() {
+        if (typeof InputTableManager !== 'undefined') {
+            this.inputTableManager = new InputTableManager({
+                containerId: 'card-input-table',
+                tbodyId: 'data-input-tbody',
+                countBadgeId: 'input-count-badge',
+                statusBadgeId: 'input-table-status-badge',
+                onInputsChanged: (inputs) => {
+                    this.interpreter.setInputQueue(inputs);
+                    this.recompile();
+                }
+            });
+            this.inputTableManager.onDetectRequest = () => {
+                const mainCode = this.files[this.getEntryFilename()] || this.dom.codeTextarea?.value || '';
+                this.inputTableManager.autoPopulateIfEmpty(mainCode);
+                this.recompile();
+            };
+        }
     }
 
     initPresets() {
@@ -265,6 +286,53 @@ class OOPVisualizerApp {
     public override string GetDetails()
     {
         return $"מפתח: {name}, שעות נוספות: {overtimeHours} (תעריף: {hourlyOvertimeRate})";
+    }
+}`
+                    }
+                },
+                'input_oop_students': {
+                    name: '📥 קלט נתונים בלולאה: יצירת עצמים (Console.ReadLine)',
+                    inputs: [
+                        { value: '2', type: 'int', note: 'כמות סטודנטים לקליטה' },
+                        { value: '18', type: 'int', note: 'גיל סטודנט 1' },
+                        { value: '88.5', type: 'double', note: 'ציון סטודנט 1' },
+                        { value: '19', type: 'int', note: 'גיל סטודנט 2' },
+                        { value: '94.0', type: 'double', note: 'ציון סטודנט 2' }
+                    ],
+                    files: {
+                        'Program.cs': `public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine("הכנס כמות סטודנטים לקליטה:");
+        int n = int.Parse(Console.ReadLine());
+
+        for (int i = 0; i < n; i++)
+        {
+            Console.WriteLine("הכנס גיל סטודנט " + (i + 1) + ":");
+            int age = int.Parse(Console.ReadLine());
+            Console.WriteLine("הכנס ממוצע ציונים:");
+            double grade = double.Parse(Console.ReadLine());
+
+            Student s = new Student(age, grade);
+            s.Show();
+        }
+    }
+}`,
+                        'Student.cs': `public class Student
+{
+    private int age;
+    private double grade;
+
+    public Student(int age, double grade)
+    {
+        this.age = age;
+        this.grade = grade;
+    }
+
+    public void Show()
+    {
+        Console.WriteLine($"סטודנט: גיל = {age}, ממוצע = {grade}");
     }
 }`
                     }
@@ -530,6 +598,50 @@ class OOPVisualizerApp {
     }
 }`
                     }
+                },
+                'input_oop_students': {
+                    name: '📥 קלט נתונים בלולאה: יצירת עצמים (Scanner)',
+                    inputs: [
+                        { value: '2', type: 'int', note: 'כמות סטודנטים לקליטה' },
+                        { value: '18', type: 'int', note: 'גיל סטודנט 1' },
+                        { value: '88.5', type: 'double', note: 'ציון סטודנט 1' },
+                        { value: '19', type: 'int', note: 'גיל סטודנט 2' },
+                        { value: '94.0', type: 'double', note: 'ציון סטודנט 2' }
+                    ],
+                    files: {
+                        'Main.java': `import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner reader = new Scanner(System.in);
+        System.out.println("הכנס כמות סטודנטים לקליטה:");
+        int n = reader.nextInt();
+
+        for (int i = 0; i < n; i++) {
+            System.out.println("הכנס גיל סטודנט " + (i + 1) + ":");
+            int age = reader.nextInt();
+            System.out.println("הכנס ממוצע ציונים:");
+            double grade = reader.nextDouble();
+
+            Student s = new Student(age, grade);
+            s.show();
+        }
+    }
+}`,
+                        'Student.java': `public class Student {
+    private int age;
+    private double grade;
+
+    public Student(int age, double grade) {
+        this.age = age;
+        this.grade = grade;
+    }
+
+    public void show() {
+        System.out.println("סטודנט: גיל = " + age + ", ממוצע = " + grade);
+    }
+}`
+                    }
                 }
             }
         };
@@ -584,13 +696,17 @@ class OOPVisualizerApp {
             tabBtnVars: document.getElementById('tab-btn-vars'),
             tabBtnStack: document.getElementById('tab-btn-stack'),
             tabBtnConsole: document.getElementById('tab-btn-console'),
+            tabBtnInput: document.getElementById('tab-btn-input'),
+            btnQuickOpenInput: document.getElementById('btn-quick-open-input'),
             tabPaneVars: document.getElementById('tab-pane-vars'),
             tabPaneStack: document.getElementById('tab-pane-stack'),
             tabPaneConsole: document.getElementById('tab-pane-console'),
+            tabPaneInput: document.getElementById('tab-pane-input'),
             variablesTbody: document.getElementById('variables-tbody'),
             callStackList: document.getElementById('call-stack-list'),
             consoleOutput: document.getElementById('console-output'),
-            consoleCountBadge: document.getElementById('console-count-badge')
+            consoleCountBadge: document.getElementById('console-count-badge'),
+            inputCountBadge: document.getElementById('input-count-badge')
         };
 
         // אתחול מנוע השלמה אוטומטית
@@ -668,10 +784,16 @@ class OOPVisualizerApp {
         this.dom.tabBtnMemory.addEventListener('click', () => this.switchStageTab('memory'));
         this.dom.tabBtnUml.addEventListener('click', () => this.switchStageTab('uml'));
 
-        // כרטיסיות מעקב תחתונות (Variables / Stack / Console)
+        // כרטיסיות מעקב תחתונות (Variables / Stack / Console / Input)
         this.dom.tabBtnVars.addEventListener('click', () => this.switchInspectTab('vars'));
         this.dom.tabBtnStack.addEventListener('click', () => this.switchInspectTab('stack'));
         this.dom.tabBtnConsole.addEventListener('click', () => this.switchInspectTab('console'));
+        if (this.dom.tabBtnInput) {
+            this.dom.tabBtnInput.addEventListener('click', () => this.switchInspectTab('input'));
+        }
+        if (this.dom.btnQuickOpenInput) {
+            this.dom.btnQuickOpenInput.addEventListener('click', () => this.switchInspectTab('input'));
+        }
 
         // שינוי רוחב Splitter
         this.setupSplitter();
@@ -811,6 +933,17 @@ class OOPVisualizerApp {
         this.activeFilename = this.files[entryFile] ? entryFile : Object.keys(this.files)[0];
         this.renderFileTabs();
         this.loadActiveFileContent();
+
+        if (this.inputTableManager) {
+            if (preset.inputs && preset.inputs.length > 0) {
+                this.inputTableManager.setInputs(preset.inputs);
+                this.switchInspectTab('input');
+            } else {
+                const mainCode = this.files[entryFile] || '';
+                this.inputTableManager.autoPopulateIfEmpty(mainCode);
+            }
+        }
+
         this.recompile();
     }
 
@@ -893,7 +1026,7 @@ class OOPVisualizerApp {
         this.dom.lineNumbers.innerHTML = html;
     }
 
-    updateHighlighter(activeLine = null) {
+    updateHighlighter(activeLine = null, isInputStep = false) {
         const code = this.dom.codeTextarea.value || '';
         const lineCount = code.split('\n').length;
         let html = '';
@@ -901,13 +1034,15 @@ class OOPVisualizerApp {
         for (let i = 1; i <= lineCount; i++) {
             const lineEl = document.getElementById(`line-num-${i}`);
             if (lineEl) {
-                lineEl.classList.remove('active-line-num');
+                lineEl.classList.remove('active-line-num', 'active-input-num');
             }
 
             if (i === activeLine) {
-                html += `<div class="code-line-highlight active-line"></div>`;
+                const hlClass = isInputStep ? 'code-line-highlight active-line active-input-line' : 'code-line-highlight active-line';
+                html += `<div class="${hlClass}"></div>`;
                 if (lineEl) {
                     lineEl.classList.add('active-line-num');
+                    if (isInputStep) lineEl.classList.add('active-input-num');
                 }
             } else {
                 html += `<div class="code-line-highlight"></div>`;
@@ -948,7 +1083,7 @@ class OOPVisualizerApp {
     }
 
     switchInspectTab(tab) {
-        ['vars', 'stack', 'console'].forEach(t => {
+        ['vars', 'stack', 'console', 'input'].forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const pane = document.getElementById(`tab-pane-${t}`);
             const isActive = t === tab;
@@ -959,7 +1094,16 @@ class OOPVisualizerApp {
 
     recompile() {
         try {
-            this.snapshots = this.interpreter.execute(this.files);
+            let inputValues = [];
+            if (this.inputTableManager) {
+                inputValues = this.inputTableManager.getInputValues();
+                if ((!inputValues || inputValues.length === 0) && this.files) {
+                    const mainCode = this.files[this.getEntryFilename()] || this.dom.codeTextarea?.value || '';
+                    this.inputTableManager.autoPopulateIfEmpty(mainCode);
+                    inputValues = this.inputTableManager.getInputValues();
+                }
+            }
+            this.snapshots = this.interpreter.execute(this.files, inputValues);
             this.currentStep = 0;
             this.renderStep(0);
             this.renderUMLDiagram();
@@ -1048,24 +1192,29 @@ class OOPVisualizerApp {
             this.renderFileTabs();
             this.loadActiveFileContent();
         }
-        this.updateHighlighter(snap.line);
+        this.updateHighlighter(snap.line, Boolean(snap.isInputStep));
 
-        // 3. רינדור רפרנסים במחסנית (Stack)
+        // 3. עדכון טבלת קלט נתונים
+        if (this.inputTableManager) {
+            this.inputTableManager.updateStep(snap);
+        }
+
+        // 4. רינדור רפרנסים במחסנית (Stack)
         this.renderStack(snap.stack, snap);
 
-        // 4. רינדור אובייקטים קונצנטריים בערימה (Russian-Doll Blobs in Heap)
+        // 5. רינדור אובייקטים קונצנטריים בערימה (Russian-Doll Blobs in Heap)
         this.renderHeap(snap.heap, snap);
 
-        // 5. ציור חיצי הצבעה מ-Stack ל-Heap
+        // 6. ציור חיצי הצבעה מ-Stack ל-Heap
         setTimeout(() => this.drawReferenceArrows(), 30);
 
-        // 6. טבלת מעקב משתנים
+        // 7. טבלת מעקב משתנים
         this.renderWatchTable(snap.stack);
 
-        // 7. מחסנית קריאות (Call Stack)
+        // 8. מחסנית קריאות (Call Stack)
         this.renderCallStack(snap.callStack);
 
-        // 8. מסוף פלט (Console Output)
+        // 9. מסוף פלט (Console Output)
         this.renderConsole(snap.console);
     }
 
