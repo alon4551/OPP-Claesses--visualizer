@@ -1003,16 +1003,18 @@ class OOPVisualizerApp {
 
     play() {
         this.isPlaying = true;
-        this.dom.btnPlay.textContent = '⏸ השהה';
-        this.dom.btnPlay.className = 'btn btn-danger';
+        this.dom.btnPlay.innerHTML = '<span>⏸️</span><span>השהה</span>';
+        this.dom.btnPlay.classList.remove('btn-ctrl-primary');
+        this.dom.btnPlay.classList.add('btn-ctrl-secondary');
         this.runLoop();
     }
 
     pause() {
         this.isPlaying = false;
         if (this.playTimer) clearTimeout(this.playTimer);
-        this.dom.btnPlay.textContent = '▶ נגן';
-        this.dom.btnPlay.className = 'btn btn-success';
+        this.dom.btnPlay.innerHTML = '<span>▶️</span><span>נגן</span>';
+        this.dom.btnPlay.classList.remove('btn-ctrl-secondary');
+        this.dom.btnPlay.classList.add('btn-ctrl-primary');
     }
 
     runLoop() {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>סטודיו ומאייר תכנות מונחה עצמים והורשה — C# || Java | אלון שרייבמן</title>
-    <link rel="stylesheet" href="css/style.css?v=2.0">
+    <link rel="stylesheet" href="css/style.css?v=3.5">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
 </head>
 <body>
@@ -218,23 +218,26 @@
                 <!-- 3. סרגל בקרת דיבאג בתחתית העורך (Debugger Controls Bar) -->
                 <div class="controls-bar" id="controls-card">
                     <div class="playback-buttons">
-                        <button type="button" id="btn-play" class="btn-ctrl btn-ctrl-primary" title="נגן / השהה הרצה אוטומטית">
-                            <span>▶</span>
+                        <button type="button" id="btn-play" class="btn-ctrl btn-ctrl-primary" title="הרץ / השהה הרצה אוטומטית">
+                            <span>▶️</span>
                             <span>נגן</span>
                         </button>
-                        <button type="button" id="btn-step-prev" class="btn-ctrl btn-ctrl-secondary" title="צעד קודם">
-                            <span>צעד קודם ◀</span>
+                        <button type="button" id="btn-step-prev" class="btn-ctrl btn-ctrl-secondary" title="צעד אחד לאחור">
+                            <span>⏮️</span>
+                            <span>אחורה</span>
                         </button>
-                        <button type="button" id="btn-step-next" class="btn-ctrl btn-ctrl-secondary" title="צעד הבא">
-                            <span>▶ צעד הבא</span>
+                        <button type="button" id="btn-step-next" class="btn-ctrl btn-ctrl-secondary" title="צעד אחד קדימה">
+                            <span>⏭️</span>
+                            <span>קדימה</span>
                         </button>
-                        <button type="button" id="btn-reset" class="btn-ctrl btn-ctrl-danger" title="איפוס">
-                            <span>איפוס ↺</span>
+                        <button type="button" id="btn-reset" class="btn-ctrl btn-ctrl-secondary" title="איפוס לתחילת הריצה">
+                            <span>🔄</span>
+                            <span>איפוס</span>
                         </button>
                     </div>
                     <div class="speed-control">
-                        <label for="speed-slider">מהירות:</label>
-                        <input type="range" id="speed-slider" class="speed-slider" min="1" max="10" value="6">
+                        <span>מהירות:</span>
+                        <input type="range" id="speed-slider" class="speed-slider" min="1" max="10" value="6" title="כוונן את מהירות הריצה">
                         <div id="step-counter" class="step-info">צעד 1 / 1</div>
                     </div>
                 </div>
@@ -243,7 +246,7 @@
                 <div id="status-banner" class="status-banner info">
                     <div class="status-content">
                         <span id="status-icon" class="status-icon">💡</span>
-                        <span id="status-text">מוכן להרצה. לחץ על "צעד הבא" או "נגן" להתחלה.</span>
+                        <span id="status-text">מוכן להרצה. לחץ על "קדימה" או "נגן" להתחלה.</span>
                     </div>
                 </div>
 
@@ -254,8 +257,8 @@
     </main>
 
     <!-- סקריפטים -->
-    <script src="js/csharp_oop_interpreter.js"></script>
-    <script src="js/autocomplete.js"></script>
-    <script src="js/visualizer.js"></script>
+    <script src="js/csharp_oop_interpreter.js?v=3.5"></script>
+    <script src="js/autocomplete.js?v=3.5"></script>
+    <script src="js/visualizer.js?v=3.5"></script>
 </body>
 </html>
