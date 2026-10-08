@@ -26,32 +26,67 @@ class CSharpOOPInterpreter {
     setInputQueue(inputs) {
         if (Array.isArray(inputs)) {
             this.inputQueue = inputs.map(item => {
-                if (typeof item === 'object' && item !== null && 'value' in item) {
-                    return String(item.value);
+                if (item === undefined || item === null) return '';
+                if (typeof item === 'object') {
+                    const v = item.value !== undefined ? item.value : (item.val !== undefined ? item.val : '');
+                    const s = String(v);
+                    return (s === 'undefined' || s === 'null') ? '' : s;
                 }
-                return String(item);
+                const s = String(item);
+                return (s === 'undefined' || s === 'null') ? '' : s;
             });
         } else if (typeof inputs === 'string') {
-            this.inputQueue = inputs.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+            this.inputQueue = inputs.split('\n').map(s => s.trim()).filter(s => s.length > 0 && s !== 'undefined' && s !== 'null');
         } else {
             this.inputQueue = [];
         }
     }
 
+    isDirectReadLineCall(expr) {
+        if (!expr) return false;
+        const clean = expr.trim().replace(/;$/, '');
+        return clean === 'Console.ReadLine()' || clean === 'Console.ReadLine' ||
+            clean === 'reader.nextLine()' || clean === 'reader.next()' ||
+            clean === 'scanner.nextLine()' || clean === 'scanner.next()' ||
+            clean === 'sc.nextLine()' || clean === 'sc.next()' ||
+            clean === 'in.nextLine()' || clean === 'in.next()';
+    }
+
+    isStringType(type) {
+        if (!type) return false;
+        const t = type.trim();
+        return t === 'string' || t === 'String' || t === 'var' || t === 'object' || t === 'Object';
+    }
+
     readNextInput(source, type = 'string', line = 1, target = null) {
         const inputIdx = this.currentInputIndex++;
-        const rawVal = this.currentInputs.length > 0 ? this.currentInputs.shift() : '0';
+        let rawVal = this.currentInputs.length > 0 ? this.currentInputs.shift() : '';
+        if (rawVal === undefined || rawVal === null || rawVal === 'undefined' || rawVal === 'null') rawVal = '';
         let parsedVal = rawVal;
         if (type === 'int') {
-            const num = parseInt(rawVal, 10);
-            parsedVal = isNaN(num) ? 0 : num;
+            const trimmed = String(rawVal).trim();
+            if (!/^-?\d+$/.test(trimmed)) {
+                throw new Error(`שגיאת זמן ריצה (FormatException): הערך שהוזן "${rawVal}" אינו מספר שלם (int) תקין! [שורה: ${line}]`);
+            }
+            parsedVal = parseInt(trimmed, 10);
         } else if (type === 'double' || type === 'float') {
-            const num = parseFloat(rawVal);
-            parsedVal = isNaN(num) ? 0.0 : num;
+            const trimmed = String(rawVal).trim();
+            if (isNaN(parseFloat(trimmed)) || !/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed)) {
+                throw new Error(`שגיאת זמן ריצה (FormatException): הערך שהוזן "${rawVal}" אינו מספר עשרוני (double) תקין! [שורה: ${line}]`);
+            }
+            parsedVal = parseFloat(trimmed);
         } else if (type === 'bool') {
-            parsedVal = String(rawVal).toLowerCase() === 'true';
+            const trimmed = String(rawVal).trim().toLowerCase();
+            if (trimmed !== 'true' && trimmed !== 'false') {
+                throw new Error(`שגיאת זמן ריצה (FormatException): הערך שהוזן "${rawVal}" אינו ערך בוליאני תקין (true / false)! [שורה: ${line}]`);
+            }
+            parsedVal = trimmed === 'true';
         } else if (type === 'char') {
-            parsedVal = String(rawVal).length > 0 ? String(rawVal).charAt(0) : ' ';
+            const trimmed = String(rawVal).trim();
+            if (trimmed.length !== 1) {
+                throw new Error(`שגיאת זמן ריצה (FormatException): הערך שהוזן "${rawVal}" אינו תו בודד (char)! [שורה: ${line}]`);
+            }
+            parsedVal = trimmed.charAt(0);
         }
 
         const inputEvent = {
@@ -413,10 +448,14 @@ class CSharpOOPInterpreter {
         }
         const rawInputs = Array.isArray(this.inputQueue) ? this.inputQueue : [];
         this.currentInputs = rawInputs.map(item => {
-            if (typeof item === 'object' && item !== null && 'value' in item) {
-                return String(item.value);
+            if (item === undefined || item === null) return '';
+            if (typeof item === 'object') {
+                const v = item.value !== undefined ? item.value : (item.val !== undefined ? item.val : '');
+                const s = String(v);
+                return (s === 'undefined' || s === 'null') ? '' : s;
             }
-            return String(item);
+            const s = String(item);
+            return (s === 'undefined' || s === 'null') ? '' : s;
         });
         this.consumedInputs = [];
         this.currentInputIndex = 0;
@@ -915,6 +954,13 @@ class CSharpOOPInterpreter {
                 const name = primDeclMatch[2];
                 const rhs = primDeclMatch[3];
 
+                if (rhs) {
+                    const cleanRhs = rhs.replace(/;$/, '').trim();
+                    if (this.isDirectReadLineCall(cleanRhs) && !this.isStringType(type)) {
+                        throw new Error(`שגיאת הידור: לא ניתן להמיר באופן מרומז טיפוס 'string' ל-'${type}'. האם התכוונת לכתוב ${type}.Parse(Console.ReadLine())? [קובץ: ${filename}, שורה: ${lineNum}]`);
+                    }
+                }
+
                 this.currentTargetVar = name;
                 let val = this.getDefaultValForType(type);
                 if (rhs) {
@@ -952,7 +998,16 @@ class CSharpOOPInterpreter {
                 const lhs = assignMatch[1];
                 const op = assignMatch[2];
                 const rhsStr = assignMatch[3].replace(/;$/, '').trim();
-                this.currentTargetVar = lhs.replace('this.', '');
+                const targetVar = lhs.replace('this.', '');
+
+                if (op === '=' && this.isDirectReadLineCall(rhsStr)) {
+                    const existingType = this.stack[targetVar]?.type || (ctx.scope[targetVar] !== undefined ? typeof ctx.scope[targetVar] : null);
+                    if (existingType && !this.isStringType(existingType)) {
+                        throw new Error(`שגיאת הידור: לא ניתן להמיר באופן מרומז טיפוס 'string' ל-'${existingType}'. האם התכוונת לכתוב ${existingType}.Parse(Console.ReadLine())? [קובץ: ${filename}, שורה: ${lineNum}]`);
+                    }
+                }
+
+                this.currentTargetVar = targetVar;
                 const rhsVal = this.evaluateExpression(rhsStr, ctx);
 
                 if (lhs.startsWith('this.')) {

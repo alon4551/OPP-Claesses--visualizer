@@ -246,6 +246,176 @@ class AutocompleteEngine {
         });
     }
 
+    setClassProvider(providerFn) {
+        this.classProvider = providerFn;
+    }
+
+    /**
+     * חילוץ מחלקות, פעולות ושדות מתוך קבצי הפרויקט
+     */
+    extractClasses() {
+        if (!this.classProvider) return {};
+        const data = this.classProvider();
+        if (data && data.classes && Object.keys(data.classes).length > 0) {
+            return data.classes;
+        }
+        const files = (data && data.files) ? data.files : {};
+        const extracted = {};
+
+        for (const [fname, code] of Object.entries(files)) {
+            const classRegex = /(?:public\s+|abstract\s+)?class\s+([A-Za-z0-9_]+)(?:\s*(?::|extends)\s*([A-Za-z0-9_]+))?\s*\{([\s\S]*?)\}(?=\s*(?:public\s+|abstract\s+)?class|$)/g;
+            let m;
+            while ((m = classRegex.exec(code)) !== null) {
+                const cName = m[1];
+                const baseName = m[2] || null;
+                const body = m[3];
+                const cls = {
+                    name: cName,
+                    baseClass: baseName,
+                    filename: fname,
+                    methods: {},
+                    fields: [],
+                    constructors: []
+                };
+
+                const methRegex = /(?:public|protected|private)?\s*(?:static\s+)?(?:virtual\s+|override\s+)?([A-Za-z0-9_<>\[\]]+)\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)/g;
+                let mm;
+                while ((mm = methRegex.exec(body)) !== null) {
+                    const retType = mm[1];
+                    const mName = mm[2];
+                    const rawParams = mm[3].trim();
+                    if (mName === cName) {
+                        cls.constructors.push({ params: rawParams });
+                        continue;
+                    }
+                    if (['if', 'while', 'for', 'switch', 'catch'].includes(mName)) continue;
+                    cls.methods[mName] = {
+                        name: mName,
+                        returnType: retType,
+                        params: rawParams ? rawParams.split(',').map(p => p.trim()) : [],
+                        originClass: cName
+                    };
+                }
+
+                const fieldRegex = /(?:public|protected)\s+([A-Za-z0-9_<>\[\]]+)\s+([A-Za-z0-9_]+)\s*(?:=|;)/g;
+                let fm;
+                while ((fm = fieldRegex.exec(body)) !== null) {
+                    cls.fields.push({
+                        type: fm[1],
+                        name: fm[2],
+                        originClass: cName
+                    });
+                }
+                extracted[cName] = cls;
+            }
+        }
+        return extracted;
+    }
+
+    /**
+     * מזהה את טיפוס המשתנה מתוך הקוד
+     */
+    inferVariableType(varName, codeBeforeCursor) {
+        if (!varName) return null;
+        if (varName === 'this') {
+            const m = codeBeforeCursor.match(/class\s+([A-Za-z0-9_]+)/g);
+            return m ? m[m.length - 1].replace('class', '').trim() : null;
+        }
+
+        const lines = codeBeforeCursor.split('\n');
+        for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i].trim();
+            const declMatch = line.match(new RegExp(`(?:^|[\\s(,;])([A-Za-z0-9_<>]+)\\s+${varName}\\s*(?:=|[;,\\)])`));
+            if (declMatch && !['public', 'private', 'protected', 'return', 'else', 'case', 'if', 'while', 'for'].includes(declMatch[1])) {
+                let foundType = declMatch[1];
+                if (foundType === 'var') {
+                    const newMatch = line.match(new RegExp(`${varName}\\s*=\\s*new\\s+([A-Za-z0-9_]+)`));
+                    if (newMatch) return newMatch[1];
+                }
+                return foundType;
+            }
+            const assignNewMatch = line.match(new RegExp(`${varName}\\s*=\\s*new\\s+([A-Za-z0-9_]+)`));
+            if (assignNewMatch) {
+                return assignNewMatch[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * איסוף ממשק מחלקה מלא כולל הורשה
+     */
+    getClassInterfaceItems(className, allClasses) {
+        const items = [];
+        const seenMethods = new Set();
+        const seenFields = new Set();
+
+        let currName = className;
+        let depth = 0;
+        while (currName && depth < 10) {
+            const cls = allClasses[currName];
+            if (!cls) break;
+
+            const methods = cls.methods ? Object.values(cls.methods) : [];
+            for (const m of methods) {
+                if (m.access && m.access === 'private') continue;
+                if (!seenMethods.has(m.name)) {
+                    seenMethods.add(m.name);
+                    const paramStr = Array.isArray(m.params)
+                        ? m.params.map(p => (typeof p === 'object' ? `${p.type || ''} ${p.name || ''}`.trim() : String(p))).join(', ')
+                        : '';
+                    const returnType = m.returnType || 'void';
+                    items.push({
+                        label: `${m.name}(${paramStr})`,
+                        insert: `${m.name}(${paramStr ? '' : ''})`,
+                        kind: 'method',
+                        detail: `${returnType} — מוגדר ב-${m.originClass || currName}`,
+                        doc: `פעולה במחלקה ${m.originClass || currName}. חתימה: ${returnType} ${m.name}(${paramStr}).`
+                    });
+                }
+            }
+
+            const fields = cls.fields || [];
+            for (const f of fields) {
+                if (f.access && f.access === 'private') continue;
+                if (!seenFields.has(f.name)) {
+                    seenFields.add(f.name);
+                    items.push({
+                        label: f.name,
+                        insert: f.name,
+                        kind: 'field',
+                        detail: `${f.type || 'field'} — שדה ב-${f.originClass || currName}`,
+                        doc: `שדה מטיפוס ${f.type || 'Object'} במחלקה ${f.originClass || currName}.`
+                    });
+                }
+            }
+
+            currName = cls.baseClass || null;
+            depth++;
+        }
+
+        if (!seenMethods.has('ToString')) {
+            items.push({
+                label: 'ToString()',
+                insert: 'ToString()',
+                kind: 'method',
+                detail: 'string (System.Object)',
+                doc: 'מחזיר ייצוג מחרוזתי של האובייקט (נדרס ע"י override string ToString()).'
+            });
+        }
+        if (!seenMethods.has('Equals')) {
+            items.push({
+                label: 'Equals(object obj)',
+                insert: 'Equals()',
+                kind: 'method',
+                detail: 'bool (System.Object)',
+                doc: 'בדיקת שוויון לוגי בין אובייקטים.'
+            });
+        }
+
+        return items;
+    }
+
     handleKeyDown(e) {
         if (!this.isOpen) {
             // קיצור Ctrl+Space לפתיחה יזומה
@@ -276,16 +446,83 @@ class AutocompleteEngine {
     handleInput() {
         const cursor = this.textarea.selectionStart;
         const text = this.textarea.value.slice(0, cursor);
-        const match = text.match(/([A-Za-z0-9_.:]+)$/);
 
-        if (match && match[1].length >= 1) {
+        // 1. בדיקת גישה לאיבר באמצעות נקודה: obj. או obj.member
+        const dotMatch = text.match(/([A-Za-z0-9_]+)\.([A-Za-z0-9_]*)$/);
+        if (dotMatch) {
+            const varName = dotMatch[1];
+            const memberQuery = dotMatch[2] || '';
+            const allClasses = this.extractClasses();
+            const varType = this.inferVariableType(varName, text);
+
+            if (varType && (allClasses[varType] || varType === 'this')) {
+                const targetClass = (varType === 'this')
+                    ? (this.inferVariableType('this', text) || Object.keys(allClasses)[0])
+                    : varType;
+                const classItems = this.getClassInterfaceItems(targetClass, allClasses);
+                this.openWithCustomItems(classItems, memberQuery, memberQuery.length);
+                return;
+            } else if (allClasses[varName]) {
+                // גישה לפעולות סטטיות של המחלקה: ClassName.
+                const classItems = this.getClassInterfaceItems(varName, allClasses);
+                this.openWithCustomItems(classItems, memberQuery, memberQuery.length);
+                return;
+            }
+        }
+
+        // 2. בדיקת יצירת אובייקט חדש: new ...
+        const newMatch = text.match(/\bnew\s+([A-Za-z0-9_]*)$/);
+        if (newMatch) {
+            const query = newMatch[1] || '';
+            const allClasses = this.extractClasses();
+            const ctorItems = [];
+            for (const [cName, cDef] of Object.entries(allClasses)) {
+                if (cName === 'Program' || cName === 'Main') continue;
+                ctorItems.push({
+                    label: `new ${cName}()`,
+                    insert: `${cName}()`,
+                    kind: 'snippet',
+                    detail: `יצירת מופע חדש של ${cName}`,
+                    doc: `יוצר אובייקט חדש בערימה (Heap) מסוג המחלקה ${cName} ומפעיל את הבנאי.`
+                });
+            }
+            if (ctorItems.length > 0) {
+                this.openWithCustomItems(ctorItems, query, query.length);
+                return;
+            }
+        }
+
+        // 3. מילות מפתח ותבניות ברירת מחדל
+        const match = text.match(/([A-Za-z0-9_]+)$/);
+        if (match && match[1].length >= 2) {
+            this.customReplaceLen = match[1].length;
             this.open(false, match[1]);
         } else {
             this.close();
         }
     }
 
+    openWithCustomItems(customItems, query = '', replaceLen = 0) {
+        this.customReplaceLen = replaceLen;
+        const lowerQ = (query || '').toLowerCase();
+        this.suggestions = customItems.filter(item => {
+            if (!query) return true;
+            return item.label.toLowerCase().includes(lowerQ) || (item.insert && item.insert.toLowerCase().includes(lowerQ));
+        });
+
+        if (this.suggestions.length === 0) {
+            this.close();
+            return;
+        }
+
+        this.selectedIndex = 0;
+        this.isOpen = true;
+        this.popup.style.display = 'flex';
+        this.renderList();
+    }
+
     open(forced = false, query = '') {
+        this.customReplaceLen = query ? query.length : 0;
         const lowerQ = query.toLowerCase();
         this.suggestions = this.items.filter(item => {
             if (!query) return true;
@@ -306,6 +543,7 @@ class AutocompleteEngine {
     close() {
         this.isOpen = false;
         this.popup.style.display = 'none';
+        this.customReplaceLen = null;
     }
 
     renderList() {
@@ -315,7 +553,7 @@ class AutocompleteEngine {
             row.className = `autocomplete-item ${idx === this.selectedIndex ? 'selected' : ''}`;
             row.innerHTML = `
                 <div class="item-main">
-                    <span class="item-kind badge-kind-${item.kind}">${item.kind === 'snippet' ? '⚡' : item.kind === 'method' ? '🔧' : '🗝️'}</span>
+                    <span class="item-kind badge-kind-${item.kind}">${item.kind === 'snippet' ? '⚡' : item.kind === 'method' ? '🔧' : item.kind === 'field' ? '📦' : '🗝️'}</span>
                     <span class="item-label">${item.label}</span>
                 </div>
                 <div class="item-detail">${item.detail}</div>
@@ -345,10 +583,12 @@ class AutocompleteEngine {
 
         const cursor = this.textarea.selectionStart;
         const textBefore = this.textarea.value.slice(0, cursor);
-        const match = textBefore.match(/([A-Za-z0-9_.:]+)$/);
-        const wordLen = match ? match[1].length : 0;
+        const match = textBefore.match(/([A-Za-z0-9_]+)$/);
+        const replaceLen = (this.customReplaceLen !== null && this.customReplaceLen !== undefined)
+            ? this.customReplaceLen
+            : (match ? match[1].length : 0);
 
-        const startPos = cursor - wordLen;
+        const startPos = cursor - replaceLen;
         const endPos = cursor;
 
         let insertText = item.insert.replace(/\$\{[^}]+\}/g, '');

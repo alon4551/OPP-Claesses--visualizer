@@ -67,13 +67,13 @@
         <!-- עמודה ימנית (בממשק RTL): במת המחשה ויזואלית ומעקב (Visual Panel) -->
         <section class="visual-panel">
 
-            <!-- במת הזיכרון הראשית: מפת ערימה ומחסנית / תרשים UML -->
+            <!-- במת הזיכרון הראשית: מפת ערימה (בובות רוסיות) / תרשים UML -->
             <div class="card memory-stage-card">
                 <div class="card-header tabs-header">
                     <div class="tabs-nav">
                         <button type="button" class="tab-btn active" id="tab-btn-memory">
                             <span>📦</span>
-                            <span>מפת זיכרון Stack &amp; Heap (בובות רוסיות)</span>
+                            <span>מפת זיכרון ערימה (Heap — בובות רוסיות)</span>
                         </button>
                         <button type="button" class="tab-btn" id="tab-btn-uml">
                             <span>🏛️</span>
@@ -82,28 +82,18 @@
                     </div>
                     <div class="card-header-actions">
                         <span class="badge" style="background: #e0e7ff; color: #3730a3;">Heap ➔ בובות קונצנטריות</span>
+                        <button type="button" class="btn-icon-toggle" id="btn-maximize-memory-stage" title="מקסם / שחזר במת אנימציה">⛶</button>
                     </div>
                 </div>
 
                 <div class="tab-content-container">
-                    <!-- לשונית 1: מפת זיכרון ערימה ומחסנית -->
+                    <!-- לשונית 1: מפת זיכרון ערימה בלבד (בובות רוסיות) -->
                     <div class="tab-pane active" id="tab-pane-memory">
-                        <div class="memory-canvas">
-                            <svg id="svg-arrow-layer" class="svg-arrow-layer"></svg>
-
-                            <!-- עמודת מחסנית (Stack - משתני הפניה) -->
-                            <div class="stack-section">
-                                <div class="section-header">
-                                    <span>מחסנית (Stack)</span>
-                                    <span style="font-size: 0.7rem; color: #64748b;">טיפוס מוצהר</span>
-                                </div>
-                                <div id="stack-list" class="stack-list"></div>
-                            </div>
-
+                        <div class="memory-canvas heap-full-canvas">
                             <!-- עמודת ערימה (Heap - אובייקטים ושכבות הורשה קונצנטריות) -->
-                            <div class="heap-section">
+                            <div class="heap-section full-width">
                                 <div class="section-header">
-                                    <span>ערימה (Heap - אובייקטים קונצנטריים)</span>
+                                    <span>ערימה (Heap - אובייקטים ושכבות הורשה)</span>
                                     <span style="font-size: 0.7rem; color: #64748b;">[C נגזרת ➔ [B ביניים ➔ [A בסיס]]]</span>
                                 </div>
                                 <div id="heap-stage" class="heap-stage"></div>
@@ -115,6 +105,23 @@
                     <div class="tab-pane" id="tab-pane-uml">
                         <div id="uml-stage" class="uml-stage"></div>
                     </div>
+                </div>
+
+                <!-- סרגל בקרה צף במצב מקסום (Maximized Control Panel) -->
+                <div class="maximized-floating-controls" id="maximized-floating-controls" style="display: none;">
+                    <div class="max-ctrl-buttons">
+                        <button type="button" class="btn-max-ctrl btn-max-prev" id="max-btn-prev" title="צעד קודם">⏮️ קודם</button>
+                        <button type="button" class="btn-max-ctrl btn-max-play" id="max-btn-play" title="הפעל / השהה">▶️ נגן</button>
+                        <button type="button" class="btn-max-ctrl btn-max-next" id="max-btn-next" title="צעד הבא">⏭️ הבא</button>
+                        <button type="button" class="btn-max-ctrl btn-max-reset" id="max-btn-reset" title="איפוס">🔄 איפוס</button>
+                    </div>
+                    <div class="max-ctrl-divider"></div>
+                    <div class="max-ctrl-info">
+                        <span class="max-ctrl-step-badge" id="max-step-counter">צעד 1 / 1</span>
+                        <span class="max-ctrl-desc" id="max-status-desc">ממתין להרצה</span>
+                    </div>
+                    <div class="max-ctrl-divider"></div>
+                    <button type="button" class="btn-max-ctrl btn-max-close" id="max-btn-close" title="צא ממצב מקסום">🗗 צא ממקסום</button>
                 </div>
             </div>
 
@@ -317,6 +324,36 @@
         </div>
 
     </main>
+
+    <!-- מודאל קלט ידידותי עבור Console.ReadLine -->
+    <div class="single-input-modal-overlay" id="single-input-modal" style="display: none;">
+        <div class="single-input-modal-card">
+            <div class="single-input-modal-header">
+                <div class="single-input-modal-title">
+                    <span>⌨️</span>
+                    <span>קלט נדרש מהמשתמש (Console.ReadLine)</span>
+                </div>
+                <button type="button" class="single-input-modal-close" id="btn-close-single-input-modal">✕</button>
+            </div>
+            <div class="single-input-modal-body">
+                <p class="single-input-modal-instruction" id="single-input-instruction">
+                    התוכנית ממתינה לקלט מהמשתמש. הזן ערך:
+                </p>
+                <div class="single-input-meta-box" id="single-input-meta">
+                    <span class="meta-label">פקודת קלט:</span> <code id="single-input-cmd">Console.ReadLine()</code>
+                    <span class="meta-label">טיפוס יעד:</span> <code id="single-input-type">string</code>
+                </div>
+                <div class="single-input-field-wrapper">
+                    <input type="text" id="single-input-field" class="single-input-input" placeholder="הזן ערך כאן..." autocomplete="off">
+                </div>
+                <div class="single-input-error" id="single-input-error" style="display: none;"></div>
+            </div>
+            <div class="single-input-modal-footer">
+                <button type="button" class="btn-input-modal btn-input-modal-secondary" id="btn-cancel-single-input">ביטול</button>
+                <button type="button" class="btn-input-modal btn-input-modal-primary" id="btn-confirm-single-input">אישור והמשך הרצה ↵</button>
+            </div>
+        </div>
+    </div>
 
     <!-- סקריפטים -->
     <script src="js/input_table_manager.js?v=4.0"></script>

@@ -680,11 +680,33 @@ public class Main {
             statusIcon: document.getElementById('status-icon'),
             statusText: document.getElementById('status-text'),
 
-            // Stage Panels
+            // Stage Panels & Maximization
+            btnMaximizeMemoryStage: document.getElementById('btn-maximize-memory-stage'),
             tabBtnMemory: document.getElementById('tab-btn-memory'),
             tabBtnUml: document.getElementById('tab-btn-uml'),
             tabPaneMemory: document.getElementById('tab-pane-memory'),
             tabPaneUml: document.getElementById('tab-pane-uml'),
+
+            // Maximized Floating Controls
+            maxFloatingControls: document.getElementById('maximized-floating-controls'),
+            maxBtnPrev: document.getElementById('max-btn-prev'),
+            maxBtnPlay: document.getElementById('max-btn-play'),
+            maxBtnNext: document.getElementById('max-btn-next'),
+            maxBtnReset: document.getElementById('max-btn-reset'),
+            maxStepCounter: document.getElementById('max-step-counter'),
+            maxStatusDesc: document.getElementById('max-status-desc'),
+            maxBtnClose: document.getElementById('max-btn-close'),
+
+            // Single Input Modal
+            singleInputModal: document.getElementById('single-input-modal'),
+            singleInputInstruction: document.getElementById('single-input-instruction'),
+            singleInputCmd: document.getElementById('single-input-cmd'),
+            singleInputType: document.getElementById('single-input-type'),
+            singleInputField: document.getElementById('single-input-field'),
+            singleInputError: document.getElementById('single-input-error'),
+            btnConfirmSingleInput: document.getElementById('btn-confirm-single-input'),
+            btnCancelSingleInput: document.getElementById('btn-cancel-single-input'),
+            btnCloseSingleInputModal: document.getElementById('btn-close-single-input-modal'),
 
             // Memory Canvas
             stackList: document.getElementById('stack-list'),
@@ -718,9 +740,16 @@ public class Main {
                     this.files[this.activeFilename] = this.dom.codeTextarea.value;
                     this.updateLineNumbers();
                     this.updateHighlighter();
-                    this.recompile();
+                    this.recompile(false);
                 }
             );
+            this.autocomplete.setClassProvider(() => {
+                return {
+                    files: this.files,
+                    activeFile: this.activeFilename,
+                    classes: this.interpreter ? this.interpreter.classes : null
+                };
+            });
             if (this.currentLanguage) {
                 this.autocomplete.setLanguage(this.currentLanguage);
             }
@@ -757,7 +786,7 @@ public class Main {
             this.files[this.activeFilename] = this.dom.codeTextarea.value;
             this.updateLineNumbers();
             this.updateHighlighter();
-            this.recompile();
+            this.recompile(false);
         });
 
         this.dom.codeTextarea.addEventListener('scroll', () => {
@@ -784,6 +813,57 @@ public class Main {
         this.dom.tabBtnMemory.addEventListener('click', () => this.switchStageTab('memory'));
         this.dom.tabBtnUml.addEventListener('click', () => this.switchStageTab('uml'));
 
+        // מקסום במת אנימציית OOP
+        if (this.dom.btnMaximizeMemoryStage) {
+            this.dom.btnMaximizeMemoryStage.addEventListener('click', () => this.toggleMaximizeMemoryStage());
+        }
+        if (this.dom.maxBtnClose) {
+            this.dom.maxBtnClose.addEventListener('click', () => this.toggleMaximizeMemoryStage(false));
+        }
+        if (this.dom.maxBtnPrev) {
+            this.dom.maxBtnPrev.addEventListener('click', () => this.stepPrev());
+        }
+        if (this.dom.maxBtnNext) {
+            this.dom.maxBtnNext.addEventListener('click', () => this.stepNext());
+        }
+        if (this.dom.maxBtnPlay) {
+            this.dom.maxBtnPlay.addEventListener('click', () => this.togglePlay());
+        }
+        if (this.dom.maxBtnReset) {
+            this.dom.maxBtnReset.addEventListener('click', () => this.resetRun());
+        }
+
+        // מודאל קלט ידידותי עבור Console.ReadLine
+        if (this.dom.btnConfirmSingleInput) {
+            this.dom.btnConfirmSingleInput.addEventListener('click', () => this.confirmSingleInput());
+        }
+        if (this.dom.btnCancelSingleInput) {
+            this.dom.btnCancelSingleInput.addEventListener('click', () => this.closeSingleInputModal());
+        }
+        if (this.dom.btnCloseSingleInputModal) {
+            this.dom.btnCloseSingleInputModal.addEventListener('click', () => this.closeSingleInputModal());
+        }
+        if (this.dom.singleInputField) {
+            this.dom.singleInputField.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.confirmSingleInput();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const stageCard = document.querySelector('.memory-stage-card');
+                if (stageCard && stageCard.classList.contains('is-maximized')) {
+                    this.toggleMaximizeMemoryStage(false);
+                }
+                if (this.dom.singleInputModal && this.dom.singleInputModal.style.display !== 'none') {
+                    this.closeSingleInputModal();
+                }
+            }
+        });
+
         // כרטיסיות מעקב תחתונות (Variables / Stack / Console / Input)
         this.dom.tabBtnVars.addEventListener('click', () => this.switchInspectTab('vars'));
         this.dom.tabBtnStack.addEventListener('click', () => this.switchInspectTab('stack'));
@@ -800,8 +880,12 @@ public class Main {
 
         // ציור חצים בעת שינוי גודל חלון או גלילה
         window.addEventListener('resize', () => this.drawReferenceArrows());
-        this.dom.heapStage.addEventListener('scroll', () => this.drawReferenceArrows());
-        this.dom.stackList.addEventListener('scroll', () => this.drawReferenceArrows());
+        if (this.dom.heapStage) {
+            this.dom.heapStage.addEventListener('scroll', () => this.drawReferenceArrows());
+        }
+        if (this.dom.stackList) {
+            this.dom.stackList.addEventListener('scroll', () => this.drawReferenceArrows());
+        }
     }
 
     switchLanguage(lang) {
@@ -964,7 +1048,12 @@ public class Main {
         this.activeFilename = filename;
         this.renderFileTabs();
         this.loadActiveFileContent();
-        this.recompile();
+        this.recompile(false);
+        setTimeout(() => {
+            if (this.dom.codeTextarea) {
+                this.dom.codeTextarea.focus();
+            }
+        }, 50);
     }
 
     renderFileTabs() {
@@ -994,7 +1083,7 @@ public class Main {
                         }
                         this.renderFileTabs();
                         this.loadActiveFileContent();
-                        this.recompile();
+                        this.recompile(false);
                     }
                 });
                 tab.appendChild(closeBtn);
@@ -1005,6 +1094,7 @@ public class Main {
                 this.renderFileTabs();
                 this.loadActiveFileContent();
                 this.updateHighlighter();
+                this.recompile(false);
             });
 
             this.dom.editorTabsList.appendChild(tab);
@@ -1092,7 +1182,7 @@ public class Main {
         });
     }
 
-    recompile() {
+    recompile(allowTabSwitch = false) {
         try {
             let inputValues = [];
             if (this.inputTableManager) {
@@ -1105,20 +1195,22 @@ public class Main {
             }
             this.snapshots = this.interpreter.execute(this.files, inputValues);
             this.currentStep = 0;
-            this.renderStep(0);
+            this.renderStep(0, allowTabSwitch);
             this.renderUMLDiagram();
+            this.syncMaximizedControls();
         } catch (err) {
             this.snapshots = [];
             this.dom.statusIcon.textContent = '❌';
             this.dom.statusText.textContent = `שגיאת הידור / מפרש: ${err.message}`;
             this.dom.statusBanner.className = 'status-banner danger';
+            this.syncMaximizedControls();
         }
     }
 
     stepNext() {
         if (this.currentStep < this.snapshots.length - 1) {
             this.currentStep++;
-            this.renderStep(this.currentStep);
+            this.renderStep(this.currentStep, true);
         } else {
             this.pause();
         }
@@ -1127,14 +1219,15 @@ public class Main {
     stepPrev() {
         if (this.currentStep > 0) {
             this.currentStep--;
-            this.renderStep(this.currentStep);
+            this.renderStep(this.currentStep, true);
         }
     }
 
     resetRun() {
         this.pause();
+        this._hasPromptedModalForRun = false;
         this.currentStep = 0;
-        this.renderStep(0);
+        this.renderStep(0, true);
     }
 
     togglePlay() {
@@ -1150,6 +1243,7 @@ public class Main {
         this.dom.btnPlay.innerHTML = '<span>⏸️</span><span>השהה</span>';
         this.dom.btnPlay.classList.remove('btn-ctrl-primary');
         this.dom.btnPlay.classList.add('btn-ctrl-secondary');
+        this.syncMaximizedControls();
         this.runLoop();
     }
 
@@ -1159,6 +1253,7 @@ public class Main {
         this.dom.btnPlay.innerHTML = '<span>▶️</span><span>נגן</span>';
         this.dom.btnPlay.classList.remove('btn-ctrl-secondary');
         this.dom.btnPlay.classList.add('btn-ctrl-primary');
+        this.syncMaximizedControls();
     }
 
     runLoop() {
@@ -1173,10 +1268,197 @@ public class Main {
         }
     }
 
+    toggleMaximizeMemoryStage(force = null) {
+        const stageCard = document.querySelector('.memory-stage-card');
+        if (!stageCard) return;
+        const isMax = (force !== null) ? force : !stageCard.classList.contains('is-maximized');
+        stageCard.classList.toggle('is-maximized', isMax);
+
+        if (this.dom.btnMaximizeMemoryStage) {
+            this.dom.btnMaximizeMemoryStage.textContent = isMax ? '🗗' : '⛶';
+            this.dom.btnMaximizeMemoryStage.title = isMax ? 'שחזר גודל במת אנימציה' : 'מקסם במת אנימציה';
+        }
+
+        if (this.dom.maxFloatingControls) {
+            this.dom.maxFloatingControls.style.display = isMax ? 'flex' : 'none';
+        }
+
+        this.syncMaximizedControls();
+    }
+
+    syncMaximizedControls() {
+        if (!this.snapshots || this.snapshots.length === 0) {
+            if (this.dom.maxStepCounter) this.dom.maxStepCounter.textContent = 'צעד 0 / 0';
+            if (this.dom.maxStatusDesc) this.dom.maxStatusDesc.textContent = this.dom.statusText ? this.dom.statusText.textContent : 'אין צעדים';
+            return;
+        }
+        const snap = this.snapshots[this.currentStep] || {};
+
+        if (this.dom.maxStepCounter) {
+            this.dom.maxStepCounter.textContent = `צעד ${this.currentStep + 1} / ${this.snapshots.length}`;
+        }
+        if (this.dom.maxStatusDesc) {
+            this.dom.maxStatusDesc.textContent = snap.desc || '';
+        }
+        if (this.dom.maxBtnPlay) {
+            this.dom.maxBtnPlay.innerHTML = this.isPlaying ? '<span>⏸️</span><span>השהה</span>' : '<span>▶️</span><span>נגן</span>';
+        }
+    }
+
+    hasSingleInput() {
+        if (!this.snapshots || this.snapshots.length === 0) return false;
+        const uniqueInputs = new Set();
+        for (const s of this.snapshots) {
+            if (s.isInputStep && s.inputEvent) {
+                const key = s.inputEvent.index !== undefined ? s.inputEvent.index : s.inputEvent;
+                uniqueInputs.add(key);
+            }
+        }
+        if (uniqueInputs.size > 0) {
+            return uniqueInputs.size === 1;
+        }
+        const inputSnaps = this.snapshots.filter(s => s.isInputStep);
+        return inputSnaps.length === 1;
+    }
+
+    openSingleInputModal(stepSnapshot = null) {
+        if (!this.dom.singleInputModal) return;
+        const snap = stepSnapshot || this.snapshots[this.currentStep] || {};
+        const inputEvent = snap.inputEvent || {};
+        const targetVar = snap.targetVar || inputEvent.target || 'קלט';
+        const type = inputEvent.type || 'string';
+
+        let currentVal = this._lastSingleInput;
+        if (currentVal === undefined || currentVal === null || currentVal === 'undefined' || currentVal === 'null') {
+            const tableVal = this.inputTableManager?.inputs?.[0]?.value ?? this.inputTableManager?.inputs?.[0]?.val;
+            if (tableVal !== undefined && tableVal !== null && tableVal !== 'undefined' && tableVal !== 'null') {
+                currentVal = tableVal;
+            } else if (inputEvent.rawVal && inputEvent.rawVal !== 'undefined' && inputEvent.rawVal !== 'null') {
+                currentVal = inputEvent.rawVal;
+            } else {
+                currentVal = '';
+            }
+        }
+
+        if (this.dom.singleInputInstruction) {
+            this.dom.singleInputInstruction.textContent = `התוכנית ממתינה לקלט מהמשתמש. הזן ערך עבור המשתנה '${targetVar}' (מטיפוס ${type}):`;
+        }
+        if (this.dom.singleInputCmd) {
+            this.dom.singleInputCmd.textContent = snap.activeLineText || 'Console.ReadLine()';
+        }
+        if (this.dom.singleInputType) {
+            this.dom.singleInputType.textContent = type;
+        }
+        if (this.dom.singleInputField) {
+            this.dom.singleInputField.value = currentVal;
+            this.dom.singleInputField.dataset.type = type;
+            this.dom.singleInputField.dataset.target = targetVar;
+            this.dom.singleInputField.placeholder = type === 'int' ? 'לדוגמה: 42' : (type === 'double' ? 'לדוגמה: 3.14' : 'הזן ערך...');
+        }
+        if (this.dom.singleInputError) {
+            this.dom.singleInputError.style.display = 'none';
+            this.dom.singleInputError.textContent = '';
+        }
+        this.dom.singleInputModal.style.display = 'flex';
+        setTimeout(() => {
+            if (this.dom.singleInputField) {
+                this.dom.singleInputField.focus();
+                this.dom.singleInputField.select();
+            }
+        }, 50);
+    }
+
+    closeSingleInputModal() {
+        if (this.dom.singleInputModal) {
+            this.dom.singleInputModal.style.display = 'none';
+        }
+    }
+
+    confirmSingleInput() {
+        if (!this.dom.singleInputField) return;
+        const rawVal = this.dom.singleInputField.value;
+        const type = this.dom.singleInputField.dataset.type || 'string';
+        const targetVar = this.dom.singleInputField.dataset.target || 'קלט';
+
+        // בדיקת תקינות מקדימה במודאל
+        if (type === 'int') {
+            if (!/^-?\d+$/.test(rawVal.trim())) {
+                this.showSingleInputError(`שגיאת המרה: הערך "${rawVal}" אינו מספר שלם (int) תקין!`);
+                return;
+            }
+        } else if (type === 'double' || type === 'float') {
+            if (isNaN(parseFloat(rawVal.trim()))) {
+                this.showSingleInputError(`שגיאת המרה: הערך "${rawVal}" אינו מספר עשרוני (double) תקין!`);
+                return;
+            }
+        } else if (type === 'bool') {
+            const low = rawVal.trim().toLowerCase();
+            if (low !== 'true' && low !== 'false') {
+                this.showSingleInputError(`שגיאת המרה: הערך "${rawVal}" אינו ערך בוליאני תקין (true / false)!`);
+                return;
+            }
+        } else if (type === 'char') {
+            if (rawVal.trim().length !== 1) {
+                this.showSingleInputError(`שגיאת המרה: הערך "${rawVal}" אינו תו בודד (char)!`);
+                return;
+            }
+        }
+
+        const cleanVal = type === 'string' ? rawVal : rawVal.trim();
+        this._lastSingleInput = cleanVal;
+
+        if (this.inputTableManager) {
+            const rowObj = {
+                id: 1,
+                value: cleanVal,
+                val: cleanVal,
+                type: type,
+                note: targetVar || 'קלט יחיד',
+                status: 'pending'
+            };
+            if (typeof this.inputTableManager.setValues === 'function') {
+                this.inputTableManager.setValues([rowObj]);
+            } else {
+                this.inputTableManager.inputs = [rowObj];
+                if (typeof this.inputTableManager.render === 'function') {
+                    this.inputTableManager.render();
+                }
+            }
+        }
+
+        this.closeSingleInputModal();
+        this._hasPromptedModalForRun = true;
+
+        const wasPlaying = this._wasPlayingBeforeModal || this.isPlaying;
+        this.recompile(true);
+
+        // מקדמים את הדיבאגר לצעד שלאחר הקלט כדי שהמשתמש יראה מיידית את הערך שנקלט
+        if (this.snapshots && this.snapshots.length > 0) {
+            const inputStepIdx = this.snapshots.findIndex(s => s.isInputStep);
+            if (inputStepIdx !== -1) {
+                const targetStep = Math.min(this.snapshots.length - 1, inputStepIdx + 1);
+                this.currentStep = targetStep;
+                this.renderStep(targetStep, true);
+            }
+        }
+
+        if (wasPlaying) {
+            this._wasPlayingBeforeModal = false;
+            this.play();
+        }
+    }
+
+    showSingleInputError(msg) {
+        if (this.dom.singleInputError) {
+            this.dom.singleInputError.textContent = msg;
+            this.dom.singleInputError.style.display = 'block';
+        }
+    }
+
     /**
      * רינדור מלא של מצב הצעד הנוכחי בדיבאגר
      */
-    renderStep(stepIdx) {
+    renderStep(stepIdx, allowTabSwitch = true) {
         if (!this.snapshots || this.snapshots.length === 0) return;
         const snap = this.snapshots[stepIdx];
 
@@ -1187,12 +1469,16 @@ public class Main {
         this.dom.statusBanner.className = `status-banner ${snap.action === 'error' ? 'danger' : snap.action === 'dynamic_dispatch' ? 'warning' : 'info'}`;
 
         // 2. סנכרון עורך הקוד והדגשת שורה
-        if (snap.file && snap.file !== this.activeFilename && this.files[snap.file]) {
+        if (allowTabSwitch && snap.file && snap.file !== this.activeFilename && this.files[snap.file]) {
             this.activeFilename = snap.file;
             this.renderFileTabs();
             this.loadActiveFileContent();
         }
-        this.updateHighlighter(snap.line, Boolean(snap.isInputStep));
+        if (snap.file === this.activeFilename) {
+            this.updateHighlighter(snap.line, Boolean(snap.isInputStep));
+        } else {
+            this.updateHighlighter(null, false);
+        }
 
         // 3. עדכון טבלת קלט נתונים
         if (this.inputTableManager) {
@@ -1216,9 +1502,22 @@ public class Main {
 
         // 9. מסוף פלט (Console Output)
         this.renderConsole(snap.console);
+
+        // 10. סנכרון סרגל בקרה צף במצב מקסום
+        this.syncMaximizedControls();
+
+        // 11. פופ-אפ קלט ידידותי עבור Console.ReadLine במידה ומדובר בפקודת קלט בודדת
+        if (snap.isInputStep && this.hasSingleInput() && !this._hasPromptedModalForRun) {
+            const wasPlaying = this.isPlaying;
+            if (this.isPlaying) this.pause();
+            this._wasPlayingBeforeModal = wasPlaying;
+            this.openSingleInputModal(snap);
+            this._hasPromptedModalForRun = true;
+        }
     }
 
     renderStack(stack, snap) {
+        if (!this.dom.stackList) return;
         this.dom.stackList.innerHTML = '';
         const varEntries = Object.entries(stack);
 
